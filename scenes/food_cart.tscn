@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://bqmcfi0veqtos"]
+
+[ext_resource type="Script" uid="uid://y8nvtxqdowiw" path="res://scripts/food_cart.gd" id="1_w6yr6"]
+[ext_resource type="Texture2D" uid="uid://lso2xmc4fevc" path="res://assets/character/Resim1.png" id="2_4efxq"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_n8bu4"]
+size = Vector2(206.5, 1.75)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_d03ea"]
+size = Vector2(234, 122)
+
+[node name="FoodCart" type="StaticBody2D" unique_id=520576782]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("1_w6yr6")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=652351793]
+position = Vector2(4, 5)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("2_4efxq")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1412271822]
+position = Vector2(7, 90)
+shape = SubResource("RectangleShape2D_n8bu4")
+
+[node name="InteractArea" type="Area2D" parent="." unique_id=310163363]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractArea" unique_id=911808949]
+position = Vector2(8, 25)
+shape = SubResource("RectangleShape2D_d03ea")
+
+[node name="PromptLabel" type="Label" parent="." unique_id=297566003]
+visible = false
+offset_left = -4.0
+offset_top = -62.0
+offset_right = 36.0
+offset_bottom = -39.0
+text = "E"
