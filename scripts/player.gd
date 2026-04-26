@@ -8,9 +8,15 @@ signal recovered
 @export var jump_velocity: float = -350.0
 @export var max_health: int = 5
 @export var attack_damage: int = 1
+@export var punch_damage: int = 2
 @export var down_duration: float = 5.0
 @export var recover_health: int = 3
 @export var hurt_duration: float = 0.25
+
+# Combo / saldırı süreleri
+@export var jab_duration: float = 0.25
+@export var punch_duration: float = 0.35
+@export var combo_window_duration: float = 0.30
 
 # Kamera sınırları
 @export var camera_min_x: float = 0.0
@@ -25,12 +31,17 @@ var is_down: bool = false
 var is_hurt: bool = false
 var current_health: int = 0
 
+var current_attack: String = ""
+var combo_window_open: bool = false
+var punch_queued: bool = false
+
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var attack_area: Area2D = $AttackArea
 @onready var attack_shape: CollisionShape2D = $AttackArea/CollisionShape2D
 @onready var attack_timer: Timer = $AttackTimer
 @onready var down_timer: Timer = $DownTimer
 @onready var hurt_timer: Timer = $HurtTimer
+@onready var combo_timer: Timer = $ComboTimer
 @onready var camera: Camera2D = $Camera2D
 
 func _ready() -> void:
@@ -51,6 +62,11 @@ func _ready() -> void:
 	hurt_timer.autostart = false
 	hurt_timer.wait_time = hurt_duration
 	hurt_timer.timeout.connect(_on_hurt_timer_timeout)
+
+	combo_timer.one_shot = true
+	combo_timer.autostart = false
+	combo_timer.wait_time = combo_window_duration
+	combo_timer.timeout.connect(_on_combo_timer_timeout)
 
 	# Kamera ayarı
 	camera.enabled = true
@@ -105,27 +121,74 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("jump") and is_on_floor() and not is_attacking:
 		velocity.y = jump_velocity
 
-	if Input.is_action_just_pressed("attack") and not is_attacking:
-		start_attack()
+	if Input.is_action_just_pressed("attack"):
+		handle_attack_input()
 
 	move_and_slide()
 	update_animation(direction)
+
+func handle_attack_input() -> void:
+	if is_down or is_hurt:
+		return
+
+	if not is_attacking:
+		start_attack()
+		return
+
+	if current_attack == "jab" and combo_window_open:
+		punch_queued = true
+		combo_window_open = false
+		combo_timer.stop()
 
 func start_attack() -> void:
 	if is_down or is_hurt:
 		return
 
 	is_attacking = true
+	current_attack = "jab"
+	punch_queued = false
+	combo_window_open = true
+
 	attack_area.position.x = 20.0 * facing
 	attack_shape.disabled = false
 
-	if sprite.sprite_frames.has_animation("attack"):
-		sprite.play("attack")
+	combo_timer.start(combo_window_duration)
 
-	hit_nearest_enemy()
-	attack_timer.start(0.2)
+	if sprite.sprite_frames.has_animation("jab"):
+		sprite.play("jab")
 
-func hit_nearest_enemy() -> void:
+	hit_nearest_enemy(attack_damage)
+	attack_timer.start(jab_duration)
+
+func start_punch() -> void:
+	if is_down or is_hurt:
+		end_attack()
+		return
+
+	is_attacking = true
+	current_attack = "punch"
+	punch_queued = false
+	combo_window_open = false
+	combo_timer.stop()
+
+	attack_area.position.x = 26.0 * facing
+	attack_shape.disabled = false
+
+	if sprite.sprite_frames.has_animation("punch"):
+		sprite.play("punch")
+
+	hit_nearest_enemy(punch_damage)
+	attack_timer.start(punch_duration)
+
+func end_attack() -> void:
+	is_attacking = false
+	current_attack = ""
+	punch_queued = false
+	combo_window_open = false
+	attack_shape.disabled = true
+	combo_timer.stop()
+
+func hit_nearest_enemy(damage: int) -> void:
 	var bodies: Array[Node2D] = attack_area.get_overlapping_bodies()
 	var nearest_enemy: Node2D = null
 	var nearest_distance: float = INF
@@ -138,11 +201,19 @@ func hit_nearest_enemy() -> void:
 				nearest_enemy = body
 
 	if nearest_enemy != null:
-		nearest_enemy.take_damage(attack_damage)
+		nearest_enemy.take_damage(damage)
 
 func _on_attack_timer_timeout() -> void:
 	attack_shape.disabled = true
-	is_attacking = false
+
+	if current_attack == "jab" and punch_queued:
+		start_punch()
+		return
+
+	end_attack()
+
+func _on_combo_timer_timeout() -> void:
+	combo_window_open = false
 
 func take_damage(amount: int) -> void:
 	if is_down:
@@ -162,8 +233,7 @@ func enter_hurt_state() -> void:
 		return
 
 	is_hurt = true
-	is_attacking = false
-	attack_shape.disabled = true
+	end_attack()
 	velocity.x = 0.0
 	play_hurt()
 	hurt_timer.start()
@@ -174,8 +244,7 @@ func _on_hurt_timer_timeout() -> void:
 func enter_down_state() -> void:
 	is_down = true
 	is_hurt = false
-	is_attacking = false
-	attack_shape.disabled = true
+	end_attack()
 	velocity = Vector2.ZERO
 	down_started.emit()
 	play_down()

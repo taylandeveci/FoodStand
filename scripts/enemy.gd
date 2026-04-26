@@ -168,5 +168,5 @@ func play_walk() -> void:
 func play_attack() -> void:
 	if is_hurt or is_dead:
 		return
-	if sprite.sprite_frames.has_animation("attack") and sprite.animation != "attack":
-		sprite.play("attack")
+	if sprite.sprite_frames.has_animation("jab") and sprite.animation != "jab":
+		sprite.play("jab")
