@@ -4,7 +4,7 @@ signal health_changed(current_health: int, max_health: int)
 signal down_started
 signal recovered
 
-@export var speed: float = 200.0
+@export var speed: float = 220.0
 @export var jump_velocity: float = -350.0
 @export var max_health: int = 5
 @export var attack_damage: int = 1
