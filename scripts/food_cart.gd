@@ -15,6 +15,9 @@ var current_hp: int = 0
 func _ready() -> void:
 	print("FoodCart _ready calisti")
 	print("Node path:", get_path())
+	
+	# KRİTİK EKLEME: Düşmanların bizi hedef alabilmesi için kendimizi Stand grubuna ekliyoruz
+	add_to_group("Stand")
 
 	current_hp = max_hp
 	hp_changed.emit(current_hp, max_hp)
@@ -64,6 +67,9 @@ func take_damage(amount: int) -> void:
 
 	if current_hp == 0:
 		destroyed.emit()
+		# MİLESTONE 2 TEST KOŞULU: Can sıfırlandığında oyunu durdur (Game Over)
+		print("TEZGAH YIKILDI! GAME OVER!")
+		get_tree().paused = true
 
 func reset_hp() -> void:
 	current_hp = max_hp

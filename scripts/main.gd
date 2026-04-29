@@ -20,9 +20,9 @@ enum GameState {
 @export var max_trash_count: int = 3
 @export var service_bar_speed: float = 140.0
 
-@export var night_duration: float = 15.0
+@export var night_duration: float = 60.0
 @export var enemy_spawn_interval: float = 4.0
-@export var max_enemies_alive: int = 2
+@export var max_enemies_alive: int = 5
 
 var money: int = 0
 var local_appeal: int = 0

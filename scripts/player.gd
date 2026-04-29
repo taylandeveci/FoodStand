@@ -126,19 +126,33 @@ func start_attack() -> void:
 	attack_timer.start(0.2)
 
 func hit_nearest_enemy() -> void:
-	var bodies: Array[Node2D] = attack_area.get_overlapping_bodies()
+	# Sahnede "enemy" grubunda olan tüm düşmanları bir listeye alıyoruz
+	var enemies = get_tree().get_nodes_in_group("enemy")
 	var nearest_enemy: Node2D = null
-	var nearest_distance: float = INF
+	
+	# Saldırı menzili (Eğer kılıcın kısa/uzun gelirse bu sayıyı artırıp azaltabilirsin)
+	var nearest_distance: float = 65.0 
 
-	for body in bodies:
-		if body.is_in_group("enemy") and body.has_method("take_damage"):
-			var dist: float = global_position.distance_to(body.global_position)
-			if dist < nearest_distance:
-				nearest_distance = dist
-				nearest_enemy = body
+	for enemy in enemies:
+		if enemy.has_method("take_damage"):
+			# Düşmanla aramızdaki mesafeyi hesaplıyoruz
+			var dist: float = global_position.distance_to(enemy.global_position)
+			
+			# Düşmanın sağımızda mı solumuzda mı olduğunu buluyoruz
+			var direction_to_enemy = sign(enemy.global_position.x - global_position.x)
+			
+			# Eğer düşman baktığımız yöndeyse (facing) VEYA çok dibimizdeyse (15 piksel)
+			if direction_to_enemy == facing or dist < 15.0:
+				if dist < nearest_distance:
+					nearest_distance = dist
+					nearest_enemy = enemy
 
+	# Eğer şartlara uyan bir düşman bulduysak hasarı veriyoruz
 	if nearest_enemy != null:
+		print("Kılıç hedefini buldu! Düşmana vuruldu. Kalan Can: ", nearest_enemy.current_hp - attack_damage)
 		nearest_enemy.take_damage(attack_damage)
+	else:
+		print("Kılıç boşa savruldu, menzilde düşman yok.")
 
 func _on_attack_timer_timeout() -> void:
 	attack_shape.disabled = true
