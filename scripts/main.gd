@@ -24,6 +24,11 @@ enum GameState {
 @export var enemy_spawn_interval: float = 4.0
 @export var max_enemies_alive: int = 2
 
+@export var customers_per_day: int = 3
+var customers_served_today: int = 0
+var customer_queue: Array[Node2D] = []
+var queue_spacing: float = 65.0
+
 var money: int = 0
 var local_appeal: int = 0
 var game_state: int = GameState.CLEANING
@@ -128,6 +133,7 @@ func start_morning_phase() -> void:
 	recipe_input_active = false
 	player_recipe_input.clear()
 	current_recipe_sequence.clear()
+	customers_served_today = 0
 
 	clear_old_trash()
 	clear_customer()
@@ -156,6 +162,7 @@ func clear_customer() -> void:
 	for child in customer_container.get_children():
 		child.queue_free()
 	active_customer = null
+	customer_queue.clear()
 
 func clear_enemies() -> void:
 	for child in enemy_container.get_children():
@@ -228,48 +235,97 @@ func _on_food_cart_interacted() -> void:
 
 func open_cart() -> void:
 	game_state = GameState.CUSTOMER_WALKING
-	set_status("Stand opened. A customer is coming.")
+	set_status("Stand opened. Customers are coming!")
 	set_result("Stand opened!")
-	spawn_customer()
+	spawn_customer_queue()
 
-func spawn_customer() -> void:
+func spawn_customer_queue() -> void:
 	if customer_scene == null:
-		push_error("customer_scene atanmamis. Main node'unda Customer.tscn bagla.")
+		push_error("customer_scene atanmamis.")
 		return
 
 	clear_customer()
+	customers_served_today = 0
 
-	active_customer = customer_scene.instantiate()
-	customer_container.add_child(active_customer)
-	active_customer.global_position = customer_spawn_point.global_position
+	var dir = sign(customer_spawn_point.global_position.x - customer_stop_point.global_position.x)
+	if dir == 0:
+		dir = 1
 
-	var order_keys: Array = recipes.keys()
-	current_order = order_keys[randi() % order_keys.size()]
-	current_recipe_sequence = recipes[current_order]
-	player_recipe_input.clear()
-	recipe_input_active = false
+	for i in range(customers_per_day):
+		var customer = customer_scene.instantiate()
+		customer_container.add_child(customer)
+		customer.global_position = customer_spawn_point.global_position + Vector2(i * queue_spacing * dir, 0)
 
-	if active_customer.has_method("set_target"):
-		active_customer.call("set_target", customer_stop_point.global_position)
+		if customer.has_signal("arrived"):
+			customer.arrived.connect(_on_customer_arrived.bind(customer))
+		if customer.has_signal("exited"):
+			customer.exited.connect(_on_customer_exited.bind(customer))
+		if customer.has_signal("patience_ran_out"):
+			customer.patience_ran_out.connect(_on_customer_patience_ran_out.bind(customer))
 
-	if active_customer.has_method("set_order_text"):
-		active_customer.call("set_order_text", current_order)
+		customer_queue.append(customer)
 
-	if active_customer.has_signal("arrived"):
-		active_customer.arrived.connect(_on_customer_arrived)
+	update_queue_positions()
 
-	if active_customer.has_signal("exited"):
-		active_customer.exited.connect(_on_customer_exited)
+func update_queue_positions() -> void:
+	var dir = sign(customer_spawn_point.global_position.x - customer_stop_point.global_position.x)
+	if dir == 0:
+		dir = 1
 
-	if active_customer.has_signal("patience_ran_out"):
-		active_customer.patience_ran_out.connect(_on_customer_patience_ran_out)
+	for i in range(customer_queue.size()):
+		var customer = customer_queue[i]
+		var target_pos = customer_stop_point.global_position
+		target_pos.x += i * queue_spacing * dir
 
-func _on_customer_patience_ran_out() -> void:
-	if game_state != GameState.CUSTOMER_WAITING and game_state != GameState.SERVING:
+		if customer.has_method("set_target"):
+			customer.call("set_target", target_pos)
+
+func _on_customer_arrived(customer: Node2D) -> void:
+	if customer_queue.size() > 0 and customer_queue[0] == customer:
+		active_customer = customer
+		game_state = GameState.CUSTOMER_WAITING
+
+		var order_keys: Array = recipes.keys()
+		current_order = order_keys[randi() % order_keys.size()]
+		current_recipe_sequence = recipes[current_order]
+		player_recipe_input.clear()
+		recipe_input_active = false
+
+		if customer.has_method("set_order_text"):
+			customer.call("set_order_text", current_order)
+		if customer.has_method("show_order"):
+			customer.call("show_order")
+
+		set_status("Customer ready. Press E to start cooking.")
+		set_result("Order: %s" % current_order)
+	else:
+		if customer.has_method("stop_patience"):
+			customer.call_deferred("stop_patience")
+		if customer.has_method("hide_order"):
+			customer.call_deferred("hide_order")
+
+func advance_queue() -> void:
+	if customer_queue.size() > 0:
+		customer_queue.pop_front()
+
+	customers_served_today += 1
+	active_customer = null
+
+	if customers_served_today >= customers_per_day:
+		set_status("Day over. Waiting for customers to leave...")
+	else:
+		game_state = GameState.CUSTOMER_WALKING
+		update_queue_positions()
+
+func _on_customer_patience_ran_out(customer: Node2D) -> void:
+	if customer != active_customer:
 		return
 
 	recipe_input_active = false
 	player_recipe_input.clear()
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "")
 
 	if service_panel:
 		service_panel.visible = false
@@ -279,23 +335,27 @@ func _on_customer_patience_ran_out() -> void:
 
 	game_state = GameState.CUSTOMER_LEAVING
 
-	if active_customer and active_customer.has_method("leave_to"):
-		active_customer.call("leave_to", customer_exit_point.global_position)
+	if customer.has_method("leave_to"):
+		customer.call("leave_to", customer_exit_point.global_position)
 
-func _on_customer_arrived() -> void:
-	game_state = GameState.CUSTOMER_WAITING
-	set_status("Customer ready. Press E to start cooking.")
-	set_result("Order: %s" % current_order)
+	advance_queue()
 
-func _on_customer_exited() -> void:
-	active_customer = null
+func _on_customer_exited(_customer: Node2D) -> void:
+	await get_tree().process_frame
 
-	if game_state == GameState.CUSTOMER_LEAVING:
+	if customers_served_today >= customers_per_day and customer_container.get_child_count() == 0:
+		set_status("Day over. Get ready for the night!")
+		await get_tree().create_timer(1.0).timeout
 		start_night_phase()
 
 func start_recipe_input_phase() -> void:
 	recipe_input_active = true
 	player_recipe_input.clear()
+
+	var combo_text = " + ".join(current_recipe_sequence)
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "Recipe: " + combo_text)
 
 	set_status("Enter recipe for %s" % current_order)
 	set_result("Use recipe keys.")
@@ -327,12 +387,19 @@ func register_recipe_input(value: String) -> void:
 
 	if player_recipe_input.size() == current_recipe_sequence.size():
 		recipe_input_active = false
+
+		if food_cart and food_cart.has_method("set_recipe_hint"):
+			food_cart.call("set_recipe_hint", "")
+
 		set_status("Correct recipe! Now serve it.")
 		start_service_phase()
 
 func fail_recipe_input() -> void:
 	recipe_input_active = false
 	player_recipe_input.clear()
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "")
 
 	set_status("Wrong recipe.")
 	set_result("Customer left without paying.")
@@ -341,6 +408,8 @@ func fail_recipe_input() -> void:
 
 	if active_customer and active_customer.has_method("leave_to"):
 		active_customer.call("leave_to", customer_exit_point.global_position)
+
+	advance_queue()
 
 func start_service_phase() -> void:
 	game_state = GameState.SERVING
@@ -405,10 +474,11 @@ func finish_service_phase() -> void:
 	if active_customer and active_customer.has_method("leave_to"):
 		active_customer.call("leave_to", customer_exit_point.global_position)
 
-	set_status("Customer is leaving. Night is next.")
+	set_status("Customer is leaving. Next one coming.")
 	set_result("%s | +%d coin" % [result_text, coin_gain])
 
 	update_ui()
+	advance_queue()
 
 func start_night_phase() -> void:
 	game_state = GameState.NIGHT

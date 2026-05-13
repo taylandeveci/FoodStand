@@ -41,10 +41,17 @@ func _process(_delta: float) -> void:
 		print("E basildi, cart interact")
 		interacted.emit()
 
+func set_recipe_hint(text_value: String) -> void:
+	if prompt_label:
+		prompt_label.text = text_value
+		prompt_label.visible = true
+
 func _on_body_entered(body: Node) -> void:
 	print("InteractArea body_entered:", body.name)
 	if body.is_in_group("player"):
 		player_in_range = true
+		if prompt_label.text == "":
+			prompt_label.text = "Press E to Interact"
 		prompt_label.visible = true
 		print("player range icinde")
 
@@ -53,6 +60,7 @@ func _on_body_exited(body: Node) -> void:
 	if body.is_in_group("player"):
 		player_in_range = false
 		prompt_label.visible = false
+		prompt_label.text = ""
 		print("player range disinda")
 
 func take_damage(amount: int) -> void:
