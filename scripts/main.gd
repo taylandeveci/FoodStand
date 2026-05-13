@@ -15,14 +15,15 @@ enum GameState {
 @export var trash_scene: PackedScene
 @export var customer_scene: PackedScene
 @export var enemy_scene: PackedScene
+@export var tank_scene: PackedScene
 
 @export var min_trash_count: int = 1
 @export var max_trash_count: int = 3
 @export var service_bar_speed: float = 140.0
 
-@export var night_duration: float = 15.0
+@export var night_duration: float = 60.0
 @export var enemy_spawn_interval: float = 4.0
-@export var max_enemies_alive: int = 2
+@export var max_enemies_alive: int = 5
 
 @export var customers_per_day: int = 3
 var customers_served_today: int = 0
@@ -500,25 +501,32 @@ func _on_enemy_spawn_timer_timeout() -> void:
 	if game_state != GameState.NIGHT:
 		return
 
-	if enemy_scene == null:
-		push_error("enemy_scene atanmamis. Main node'unda Enemy.tscn bagla.")
-		return
-
 	if enemy_container.get_child_count() >= max_enemies_alive:
 		return
 
-	var enemy = enemy_scene.instantiate()
-	enemy_container.add_child(enemy)
+	var enemy_instance = null
+	
+	# YENİ MANTIK: Eğer tank sahnesi atanmışsa ve atılan zar %20'den küçükse TANK doğur
+	if tank_scene != null and randf() < 0.2:
+		enemy_instance = tank_scene.instantiate()
+		print("DİKKAT: TANK SPAWN OLDU!")
+	else:
+		# Değilse normal düşman doğur
+		if enemy_scene == null:
+			push_error("enemy_scene atanmamis.")
+			return
+		enemy_instance = enemy_scene.instantiate()
+
+	enemy_container.add_child(enemy_instance)
 
 	if randi() % 2 == 0:
-		enemy.global_position = enemy_spawn_left.global_position
+		enemy_instance.global_position = enemy_spawn_left.global_position
 	else:
-		enemy.global_position = enemy_spawn_right.global_position
+		enemy_instance.global_position = enemy_spawn_right.global_position
 
-	enemy.stand_ref = food_cart
-	enemy.player_ref = player
+	enemy_instance.stand_ref = food_cart
+	enemy_instance.player_ref = player
 
-	print("ENEMY SPAWNED AT:", enemy.global_position)
 
 func _on_night_timer_timeout() -> void:
 	if game_state != GameState.NIGHT:

@@ -26,6 +26,11 @@ var is_hurt: bool = false
 func _ready() -> void:
 	current_hp = max_hp
 	add_to_group("enemy")
+	
+	# KRİTİK EKLEME: Sahnede bulunan oyuncu ve tezgahı gruplarından bulup atıyoruz.
+	# Grupların isimlerinin sahnede verdiğimiz etiketlerle birebir aynı olmasına dikkat et.
+	stand_ref = get_tree().get_first_node_in_group("Stand")
+	player_ref = get_tree().get_first_node_in_group("player")
 
 	attack_timer.one_shot = false
 	attack_timer.autostart = false
