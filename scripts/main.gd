@@ -45,11 +45,12 @@ var player_recipe_input: Array = []
 var recipe_input_active: bool = false
 
 var recipes := {
-	"BURGER": ["A", "A"],
-	"HOTDOG": ["A", "B"]
+	"BURGER": ["C", "V"],
+	"HOTDOG": ["C", "B"]
 }
 
 @onready var player = $Player
+@onready var hud = get_node_or_null("HUD")
 @onready var trash_points: Node2D = $TrashPoints
 @onready var trash_container: Node2D = $TrashContainer
 @onready var food_cart = $FoodCart
@@ -151,6 +152,9 @@ func start_morning_phase() -> void:
 
 	set_status("Morning Prep: collect the trash.")
 	set_result("")
+	
+	if hud and hud.has_method("show_phase_morning_prep"):
+		hud.show_phase_morning_prep()
 
 	spawn_random_trash()
 	update_ui()
@@ -496,6 +500,9 @@ func start_night_phase() -> void:
 
 	set_status("Night started! Protect the stand.")
 	set_result("Survive until dawn.")
+	
+	if hud and hud.has_method("show_phase_night_started"):
+		hud.show_phase_night_started()
 
 func _on_enemy_spawn_timer_timeout() -> void:
 	if game_state != GameState.NIGHT:
@@ -541,6 +548,9 @@ func _on_night_timer_timeout() -> void:
 
 	set_status("Night survived!")
 	set_result("You protected the stand.")
+	
+	if hud and hud.has_method("show_phase_night_survived"):
+		hud.show_phase_night_survived()
 
 	await get_tree().create_timer(2.0).timeout
 	start_morning_phase()
@@ -556,10 +566,16 @@ func _on_food_cart_destroyed() -> void:
 
 	set_status("Stand destroyed!")
 	set_result("Game Over")
+	
+	if hud and hud.has_method("show_game_over"):
+		hud.show_game_over()
 
 func _on_player_down_started() -> void:
 	if game_state == GameState.NIGHT:
 		set_status("You are down! Enemies are attacking the stand.")
+
+		if hud and hud.has_method("show_player_down"):
+			hud.show_player_down()
 
 func _on_player_recovered() -> void:
 	if game_state == GameState.NIGHT:
