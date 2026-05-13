@@ -55,6 +55,9 @@ var recipe_display_map := {
 	"B": "K"
 }
 
+@onready var day_background: Sprite2D = $DayBackground
+@onready var night_background: Sprite2D = $NightBackground
+
 @onready var player = $Player
 @onready var hud = get_node_or_null("HUD")
 @onready var trash_points: Node2D = $TrashPoints
@@ -87,6 +90,8 @@ var recipe_display_map := {
 
 func _ready() -> void:
 	randomize()
+
+	set_day_background()
 
 	if player and player.has_signal("health_changed"):
 		player.health_changed.connect(_on_player_health_changed)
@@ -133,6 +138,18 @@ func _process(delta: float) -> void:
 	if recipe_input_active:
 		handle_recipe_input()
 
+func set_day_background() -> void:
+	if day_background:
+		day_background.visible = true
+	if night_background:
+		night_background.visible = false
+
+func set_night_background() -> void:
+	if day_background:
+		day_background.visible = false
+	if night_background:
+		night_background.visible = true
+
 func start_morning_phase() -> void:
 	game_state = GameState.CLEANING
 	current_order = ""
@@ -142,6 +159,8 @@ func start_morning_phase() -> void:
 	player_recipe_input.clear()
 	current_recipe_sequence.clear()
 	customers_served_today = 0
+
+	set_day_background()
 
 	clear_old_trash()
 	clear_customer()
@@ -502,6 +521,8 @@ func finish_service_phase() -> void:
 func start_night_phase() -> void:
 	game_state = GameState.NIGHT
 	clear_enemies()
+
+	set_night_background()
 
 	night_timer.stop()
 	enemy_spawn_timer.stop()

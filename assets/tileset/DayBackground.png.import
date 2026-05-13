@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c6cnb6v73eiaj"
-path="res://.godot/imported/City background.png-10364690a509dcb78c0efa0348017b45.ctex"
+path="res://.godot/imported/DayBackground.png-32672f0dbc64188de0fd82bf473b8502.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/tileset/City background.png"
-dest_files=["res://.godot/imported/City background.png-10364690a509dcb78c0efa0348017b45.ctex"]
+source_file="res://assets/tileset/DayBackground.png"
+dest_files=["res://.godot/imported/DayBackground.png-32672f0dbc64188de0fd82bf473b8502.ctex"]
 
 [params]
 

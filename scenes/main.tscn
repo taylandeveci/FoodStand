@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://cq1n02xm5w3t8"]
 
-[ext_resource type="Texture2D" uid="uid://c6cnb6v73eiaj" path="res://assets/tileset/City background.png" id="1_jjgbg"]
+[ext_resource type="Texture2D" uid="uid://c6cnb6v73eiaj" path="res://assets/tileset/DayBackground.png" id="1_jjgbg"]
 [ext_resource type="Script" uid="uid://ddn0atfrw5o73" path="res://scripts/main.gd" id="1_pdsj5"]
 [ext_resource type="PackedScene" uid="uid://cnhvt5r0rftfp" path="res://scenes/trash.tscn" id="2_ee4r6"]
 [ext_resource type="Texture2D" uid="uid://co0pfsd4nlti" path="res://assets/tileset/GandalfHardcore city tiles 32x32.png" id="2_wsu2k"]
@@ -20,6 +20,7 @@
 [ext_resource type="Texture2D" uid="uid://cyiwmpijynlv2" path="res://assets/character/adventurer-attack1-02.png" id="6_ee4r6"]
 [ext_resource type="Texture2D" uid="uid://dt8errgy4sksm" path="res://assets/character/adventurer-jump-02.png" id="7_fevyy"]
 [ext_resource type="Texture2D" uid="uid://belibjgnqsawh" path="res://assets/character/adventurer-attack1-03.png" id="7_gt3je"]
+[ext_resource type="Texture2D" uid="uid://d1vflagvnukt1" path="res://assets/tileset/NightBackground.png" id="7_kmb1v"]
 [ext_resource type="Texture2D" uid="uid://d0jndaxjyedm6" path="res://assets/character/adventurer-attack1-04.png" id="8_3pmx8"]
 [ext_resource type="Texture2D" uid="uid://crrmjablym3pu" path="res://assets/character/adventurer-jump-03.png" id="8_hibaj"]
 [ext_resource type="Script" uid="uid://dll113u7ivrrk" path="res://scripts/player.gd" id="9_5q0nq"]
@@ -811,8 +812,13 @@ enemy_scene = ExtResource("4_2f3dj")
 tank_scene = ExtResource("5_dgi5k")
 max_trash_count = 1
 
-[node name="Background" type="Sprite2D" parent="." unique_id=1276620154]
-position = Vector2(3.2186508e-05, -9.536743e-06)
+[node name="NightBackground" type="Sprite2D" parent="." unique_id=1738108801]
+position = Vector2(-2.0563602e-05, -7.4999876)
+scale = Vector2(0.59396756, 0.96575356)
+texture = ExtResource("7_kmb1v")
+
+[node name="DayBackground" type="Sprite2D" parent="." unique_id=1276620154]
+position = Vector2(6.1035156e-05, 0)
 scale = Vector2(1.25, 2.0809247)
 texture = ExtResource("1_jjgbg")
 
@@ -981,6 +987,7 @@ scale = Vector2(2.2, 2.2)
 value = 100.0
 texture_under = ExtResource("5_og1vs")
 texture_progress = ExtResource("6_2wyq8")
+texture_progress_offset = Vector2(0, 15)
 
 [node name="CoinIcon" type="TextureRect" parent="HUD/HUDRoot" unique_id=419500503]
 layout_mode = 0

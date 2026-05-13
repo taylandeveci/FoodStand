@@ -240,7 +240,7 @@ radius = 60.0
 
 [node name="Enemy" type="CharacterBody2D" unique_id=1921073836]
 z_index = 2
-scale = Vector2(2, 2)
+scale = Vector2(4, 4)
 collision_layer = 4
 script = ExtResource("1_dlxkk")
 speed = 30.0
