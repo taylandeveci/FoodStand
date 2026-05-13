@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://cstgdpcca7ypt" path="res://assets/character/adventurer-attack1-00.png" id="4_hibaj"]
 [ext_resource type="Texture2D" uid="uid://cb0wabe4hgfve" path="res://assets/character/adventurer-idle-01.png" id="4_k12tt"]
 [ext_resource type="PackedScene" uid="uid://bqmcfi0veqtos" path="res://scenes/food_cart.tscn" id="5_2wyq8"]
+[ext_resource type="PackedScene" uid="uid://bky1c2fpeh221" path="res://scenes/tank_enemy.tscn" id="5_dgi5k"]
 [ext_resource type="Texture2D" uid="uid://ubeygbpe8isq" path="res://assets/character/adventurer-jump-00.png" id="5_h1bgf"]
 [ext_resource type="Texture2D" uid="uid://bo31hl8mkni4v" path="res://assets/character/greenbar (3).png" id="5_og1vs"]
 [ext_resource type="Texture2D" uid="uid://wecyoehthnxw" path="res://assets/character/adventurer-attack1-01.png" id="5_pdsj5"]
@@ -426,6 +427,7 @@ script = ExtResource("1_pdsj5")
 trash_scene = ExtResource("2_ee4r6")
 customer_scene = ExtResource("3_vxglm")
 enemy_scene = ExtResource("4_2f3dj")
+tank_scene = ExtResource("5_dgi5k")
 max_trash_count = 1
 
 [node name="Background" type="Sprite2D" parent="." unique_id=1276620154]
