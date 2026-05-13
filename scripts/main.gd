@@ -44,9 +44,15 @@ var current_recipe_sequence: Array = []
 var player_recipe_input: Array = []
 var recipe_input_active: bool = false
 
+# İç mantık A/B, oyuncuya ekranda J/K gösterilecek
 var recipes := {
-	"BURGER": ["C", "V"],
-	"HOTDOG": ["C", "B"]
+	"BURGER": ["A", "A"],
+	"HOTDOG": ["A", "B"]
+}
+
+var recipe_display_map := {
+	"A": "J",
+	"B": "K"
 }
 
 @onready var player = $Player
@@ -152,7 +158,7 @@ func start_morning_phase() -> void:
 
 	set_status("Morning Prep: collect the trash.")
 	set_result("")
-	
+
 	if hud and hud.has_method("show_phase_morning_prep"):
 		hud.show_phase_morning_prep()
 
@@ -357,7 +363,11 @@ func start_recipe_input_phase() -> void:
 	recipe_input_active = true
 	player_recipe_input.clear()
 
-	var combo_text = " + ".join(current_recipe_sequence)
+	var combo_parts: Array = []
+	for key in current_recipe_sequence:
+		combo_parts.append(recipe_display_map.get(key, str(key)))
+
+	var combo_text = " + ".join(combo_parts)
 
 	if food_cart and food_cart.has_method("set_recipe_hint"):
 		food_cart.call("set_recipe_hint", "Recipe: " + combo_text)
@@ -388,7 +398,11 @@ func register_recipe_input(value: String) -> void:
 		fail_recipe_input()
 		return
 
-	set_result("Recipe Input: %s" % str(player_recipe_input))
+	var display_parts: Array = []
+	for key in player_recipe_input:
+		display_parts.append(recipe_display_map.get(key, str(key)))
+
+	set_result("Recipe Input: %s" % " + ".join(display_parts))
 
 	if player_recipe_input.size() == current_recipe_sequence.size():
 		recipe_input_active = false
@@ -500,7 +514,7 @@ func start_night_phase() -> void:
 
 	set_status("Night started! Protect the stand.")
 	set_result("Survive until dawn.")
-	
+
 	if hud and hud.has_method("show_phase_night_started"):
 		hud.show_phase_night_started()
 
@@ -512,13 +526,11 @@ func _on_enemy_spawn_timer_timeout() -> void:
 		return
 
 	var enemy_instance = null
-	
-	# YENİ MANTIK: Eğer tank sahnesi atanmışsa ve atılan zar %20'den küçükse TANK doğur
+
 	if tank_scene != null and randf() < 0.2:
 		enemy_instance = tank_scene.instantiate()
 		print("DİKKAT: TANK SPAWN OLDU!")
 	else:
-		# Değilse normal düşman doğur
 		if enemy_scene == null:
 			push_error("enemy_scene atanmamis.")
 			return
@@ -534,7 +546,6 @@ func _on_enemy_spawn_timer_timeout() -> void:
 	enemy_instance.stand_ref = food_cart
 	enemy_instance.player_ref = player
 
-
 func _on_night_timer_timeout() -> void:
 	if game_state != GameState.NIGHT:
 		return
@@ -548,7 +559,7 @@ func _on_night_timer_timeout() -> void:
 
 	set_status("Night survived!")
 	set_result("You protected the stand.")
-	
+
 	if hud and hud.has_method("show_phase_night_survived"):
 		hud.show_phase_night_survived()
 
@@ -566,7 +577,7 @@ func _on_food_cart_destroyed() -> void:
 
 	set_status("Stand destroyed!")
 	set_result("Game Over")
-	
+
 	if hud and hud.has_method("show_game_over"):
 		hud.show_game_over()
 
