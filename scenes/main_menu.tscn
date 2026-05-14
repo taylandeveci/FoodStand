@@ -1,0 +1,311 @@
+[gd_scene format=3 uid="uid://dkuwuqiv4s2oq"]
+
+[ext_resource type="Script" uid="uid://d2ntr6qj5ipa5" path="res://scripts/main_menu.gd" id="1_bqqt6"]
+[ext_resource type="Texture2D" uid="uid://eueef7kx0djb" path="res://assets/background.png" id="2_8ln24"]
+[ext_resource type="FontFile" uid="uid://d5vrfcakc278" path="res://assets/ThaleahFat.ttf" id="2_wu84c"]
+[ext_resource type="AudioStream" uid="uid://cuc12tdr1x2do" path="res://White Sands Day Night.mp3" id="4_wu84c"]
+[ext_resource type="Script" uid="uid://ctisnwwouusdr" path="res://scripts/music_h_slider.gd" id="5_8ln24"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ekxnf"]
+texture = ExtResource("2_8ln24")
+modulate_color = Color(0.69342947, 0.6934295, 0.69342947, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vue75"]
+bg_color = Color(0.71966445, 0.55957043, 0.16583875, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0, 0, 0, 0.20784314)
+shadow_size = 5
+shadow_offset = Vector2(0, 0.341)
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_bqqt6"]
+color = Color(1, 1, 1, 1)
+thickness = 6
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_wu84c"]
+color = Color(0.827451, 0.64705884, 0.12156863, 1)
+thickness = 6
+
+[node name="MainMenu" type="Control" unique_id=1084114664]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bqqt6")
+
+[node name="Panel" type="Panel" parent="." unique_id=2027730950]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_ekxnf")
+
+[node name="MainButtons" type="VBoxContainer" parent="." unique_id=715106524]
+modulate = Color(1, 1, 1, 0.8392157)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 198.0
+offset_top = 30.0
+offset_right = 567.0
+offset_bottom = 277.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 9
+
+[node name="Button" type="Button" parent="MainButtons" unique_id=251738953]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_vue75")
+text = "Start Game"
+
+[node name="Button2" type="Button" parent="MainButtons" unique_id=1630363077]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_vue75")
+text = "Options"
+
+[node name="Button3" type="Button" parent="MainButtons" unique_id=1234045186]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_vue75")
+text = "Exit
+"
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=1954249814]
+stream = ExtResource("4_wu84c")
+autoplay = true
+bus = &"Music"
+
+[node name="Options" type="Panel" parent="." unique_id=1433779553]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -302.0
+offset_top = -165.75
+offset_right = 296.0
+offset_bottom = 165.75
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="Options" unique_id=2033703919]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 81.75
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.83137256, 0.6156863, 0.13725491, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 36
+text = "Options"
+horizontal_alignment = 1
+
+[node name="Back" type="Button" parent="Options" unique_id=1431955751]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -50.25
+offset_top = -51.0
+offset_right = 64.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_vue75")
+text = "Back
+"
+icon_alignment = 1
+
+[node name="MusicHSlider" type="HSlider" parent="Options" unique_id=276834317]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -412.0
+offset_top = -55.0
+offset_right = -44.0
+offset_bottom = 0.75
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_styles/slider = SubResource("StyleBoxLine_bqqt6")
+theme_override_styles/grabber_area = SubResource("StyleBoxLine_wu84c")
+theme_override_styles/grabber_area_highlight = SubResource("StyleBoxLine_wu84c")
+max_value = 1.0
+step = 0.05
+value = 1.0
+script = ExtResource("5_8ln24")
+audio_bus_name = "Music"
+
+[node name="Music" type="Label" parent="Options" unique_id=1171567172]
+layout_mode = 0
+offset_left = 43.0
+offset_top = 117.75
+offset_right = 164.0
+offset_bottom = 152.75
+theme_override_colors/font_color = Color(0.8509804, 0.6627451, 0.19607843, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 19
+text = "Music"
+horizontal_alignment = 1
+
+[node name="SoundHSlider" type="HSlider" parent="Options" unique_id=1101051722]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -412.0
+offset_top = 15.0
+offset_right = -44.0
+offset_bottom = 70.75
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_styles/slider = SubResource("StyleBoxLine_bqqt6")
+theme_override_styles/grabber_area = SubResource("StyleBoxLine_wu84c")
+theme_override_styles/grabber_area_highlight = SubResource("StyleBoxLine_wu84c")
+value = 20.0
+
+[node name="Sound" type="Label" parent="Options" unique_id=1322500647]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 43.0
+offset_top = 21.0
+offset_right = 164.0
+offset_bottom = 56.0
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.8509804, 0.6627451, 0.19607843, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 19
+text = "Sound"
+horizontal_alignment = 1
+
+[node name="Start Game" type="Panel" parent="." unique_id=989593653]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -302.0
+offset_top = -165.0
+offset_right = 296.0
+offset_bottom = 167.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="Start Game" unique_id=26100557]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 23.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.8509804, 0.62352943, 0.19607843, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 35
+text = "Start Game"
+horizontal_alignment = 1
+
+[node name="New Game" type="Button" parent="Start Game" unique_id=165776445]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -102.25
+offset_top = -53.5
+offset_right = 102.25
+offset_bottom = -2.5
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxFlat_vue75")
+text = "New Game
+"
+icon_alignment = 1
+
+[node name="Restart" type="Button" parent="Start Game" unique_id=1938124741]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -102.0
+offset_top = 15.5
+offset_right = 102.0
+offset_bottom = 66.5
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxFlat_vue75")
+text = "Restart
+"
+icon_alignment = 1
+
+[node name="Back" type="Button" parent="Start Game" unique_id=2626206]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -50.25
+offset_top = -51.0
+offset_right = 64.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_vue75")
+text = "Back
+"
+icon_alignment = 1
+
+[connection signal="pressed" from="MainButtons/Button" to="." method="_on_start_pressed"]
+[connection signal="pressed" from="MainButtons/Button2" to="." method="_on_options_pressed"]
+[connection signal="pressed" from="MainButtons/Button3" to="." method="_on_exit_pressed"]
+[connection signal="pressed" from="Options/Back" to="." method="_on_back_options_pressed"]
+[connection signal="value_changed" from="Options/MusicHSlider" to="Options/MusicHSlider" method="_on_value_changed"]
+[connection signal="pressed" from="Start Game/New Game" to="." method="_on_new_game_pressed"]
+[connection signal="pressed" from="Start Game/Restart" to="." method="_on_restart_pressed"]
+[connection signal="pressed" from="Start Game/Back" to="." method="_on_back_start_pressed"]
