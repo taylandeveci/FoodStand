@@ -4,7 +4,7 @@ extends Control
 @onready var options: Panel = $Options
 @onready var start_game: Panel = $"Start Game"
 
-const GAME_SCENE_PATH := "res://scenes/main.tscn"
+const DISTRICT_SELECT_SCENE_PATH := "res://scenes/district_select.tscn"
 
 func _ready() -> void:
 	show_main_menu()
@@ -34,15 +34,9 @@ func _on_back_start_pressed() -> void:
 	show_main_menu()
 
 func _on_new_game_pressed() -> void:
-	print("NEW GAME BASILDI")
-	print("PATH EXISTS:", ResourceLoader.exists(GAME_SCENE_PATH))
-
-	var err := get_tree().change_scene_to_file(GAME_SCENE_PATH)
-	print("CHANGE RESULT:", err)
+	RunManager.reset_run()
+	get_tree().change_scene_to_file(DISTRICT_SELECT_SCENE_PATH)
 
 func _on_restart_pressed() -> void:
-	print("RESTART BASILDI")
-	print("PATH EXISTS:", ResourceLoader.exists(GAME_SCENE_PATH))
-
-	var err := get_tree().change_scene_to_file(GAME_SCENE_PATH)
-	print("CHANGE RESULT:", err)
+	RunManager.reset_run()
+	get_tree().change_scene_to_file(DISTRICT_SELECT_SCENE_PATH)

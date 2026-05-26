@@ -1,0 +1,46 @@
+[gd_scene format=3 uid="uid://dbrydv5xqxs7s"]
+
+[ext_resource type="Script" uid="uid://dl616j611dc7w" path="res://scenes/district_select.gd" id="1_qwe34"]
+
+[node name="DistrictSelect" type="Control" unique_id=412937426]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 67.0
+offset_bottom = 38.0
+script = ExtResource("1_qwe34")
+
+[node name="Panel" type="Panel" parent="." unique_id=2030429143]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 720.0
+
+[node name="TitleLabel" type="Label" parent="Panel" unique_id=1617915012]
+layout_mode = 0
+offset_left = 639.0
+offset_top = 26.0
+offset_right = 746.0
+offset_bottom = 49.0
+text = "Select District"
+
+[node name="InfoLabel" type="Label" parent="Panel" unique_id=778435982]
+layout_mode = 0
+offset_left = 1031.0
+offset_top = 30.0
+offset_right = 1071.0
+offset_bottom = 53.0
+
+[node name="DistrictGrid" type="GridContainer" parent="Panel" unique_id=942011806]
+layout_mode = 0
+offset_left = 322.0
+offset_top = 198.0
+offset_right = 362.0
+offset_bottom = 238.0
+columns = 2
+
+[node name="BackButton" type="Button" parent="Panel" unique_id=1251279944]
+layout_mode = 0
+offset_left = 54.0
+offset_top = 34.0
+offset_right = 99.0
+offset_bottom = 65.0
+text = "Back"

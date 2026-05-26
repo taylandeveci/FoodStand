@@ -18,12 +18,22 @@ extends CanvasLayer
 
 @onready var phase_label: Label = $HUDRoot/PhaseLabel
 
+# SHOP PANEL
+@onready var shop_panel: Panel = $HUDRoot/ShopPanel
+@onready var shop_title_label: Label = $HUDRoot/ShopPanel/ShopTitleLabel
+@onready var shop_money_label: Label = $HUDRoot/ShopPanel/ShopMoneyLabel
+@onready var shop_mode_label: Label = $HUDRoot/ShopPanel/ShopModeLabel
+@onready var upgrade_list: VBoxContainer = $HUDRoot/ShopPanel/UpgradeList
+@onready var upgrade_button_1: Button = $HUDRoot/ShopPanel/UpgradeList/UpgradeButton1
+@onready var upgrade_button_2: Button = $HUDRoot/ShopPanel/UpgradeList/UpgradeButton2
+@onready var upgrade_button_3: Button = $HUDRoot/ShopPanel/UpgradeList/UpgradeButton3
+@onready var continue_button: Button = $HUDRoot/ShopPanel/ContinueButton
 
 func _ready() -> void:
 	clear_feedback()
 	hide_service_panel()
+	hide_shop_panel()
 	apply_default_layout()
-	
 
 
 # -------------------------
@@ -100,6 +110,49 @@ func hide_service_panel() -> void:
 func update_timing_bar(value: float, maximum: float = 100.0) -> void:
 	timing_bar.max_value = maximum
 	timing_bar.value = value
+
+
+# -------------------------
+# SHOP PANEL
+# -------------------------
+
+func show_shop_panel(
+	title_text: String,
+	mode_text: String,
+	current_money: int,
+	upgrade_1_text: String,
+	upgrade_2_text: String,
+	upgrade_3_text: String
+) -> void:
+	shop_panel.visible = true
+
+	shop_title_label.text = title_text
+	shop_mode_label.text = mode_text
+	shop_money_label.text = "Money: " + str(current_money)
+
+	upgrade_button_1.text = upgrade_1_text
+	upgrade_button_2.text = upgrade_2_text
+	upgrade_button_3.text = upgrade_3_text
+
+	upgrade_button_1.disabled = false
+	upgrade_button_2.disabled = false
+	upgrade_button_3.disabled = false
+	continue_button.disabled = false
+
+
+func hide_shop_panel() -> void:
+	shop_panel.visible = false
+
+
+func update_shop_money(current_money: int) -> void:
+	shop_money_label.text = "Money: " + str(current_money)
+
+
+func set_shop_buttons_enabled(enabled: bool) -> void:
+	upgrade_button_1.disabled = not enabled
+	upgrade_button_2.disabled = not enabled
+	upgrade_button_3.disabled = not enabled
+	continue_button.disabled = not enabled
 
 
 # -------------------------

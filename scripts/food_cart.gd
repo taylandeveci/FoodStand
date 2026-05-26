@@ -75,9 +75,7 @@ func take_damage(amount: int) -> void:
 
 	if current_hp == 0:
 		destroyed.emit()
-		# MİLESTONE 2 TEST KOŞULU: Can sıfırlandığında oyunu durdur (Game Over)
 		print("TEZGAH YIKILDI! GAME OVER!")
-		get_tree().paused = true
 
 func reset_hp() -> void:
 	current_hp = max_hp

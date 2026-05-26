@@ -1254,6 +1254,64 @@ theme_override_font_sizes/font_size = 64
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="ShopPanel" type="Panel" parent="HUD/HUDRoot" unique_id=1687302260]
+layout_mode = 0
+offset_left = 240.0
+offset_top = 295.0
+offset_right = 974.0
+offset_bottom = 637.0
+
+[node name="ShopTitleLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=383066355]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 4.0
+offset_right = 98.0
+offset_bottom = 27.0
+text = "Shop"
+
+[node name="ShopMoneyLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=1865744250]
+layout_mode = 0
+offset_left = 642.0
+offset_top = 3.0
+offset_right = 713.0
+offset_bottom = 26.0
+text = "Money: 0"
+
+[node name="ShopModeLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=659282147]
+layout_mode = 0
+offset_left = 293.0
+offset_top = 5.0
+offset_right = 401.0
+offset_bottom = 28.0
+text = "Day Upgrades"
+
+[node name="UpgradeList" type="VBoxContainer" parent="HUD/HUDRoot/ShopPanel" unique_id=1238476555]
+layout_mode = 0
+offset_left = 278.0
+offset_top = 100.0
+offset_right = 366.0
+offset_bottom = 201.0
+
+[node name="UpgradeButton1" type="Button" parent="HUD/HUDRoot/ShopPanel/UpgradeList" unique_id=100574059]
+layout_mode = 2
+text = "Upgrade 1"
+
+[node name="UpgradeButton2" type="Button" parent="HUD/HUDRoot/ShopPanel/UpgradeList" unique_id=1908957445]
+layout_mode = 2
+text = "Upgrade 2"
+
+[node name="UpgradeButton3" type="Button" parent="HUD/HUDRoot/ShopPanel/UpgradeList" unique_id=1223086962]
+layout_mode = 2
+text = "Upgrade 3"
+
+[node name="ContinueButton" type="Button" parent="HUD/HUDRoot/ShopPanel" unique_id=444386675]
+layout_mode = 0
+offset_left = 642.0
+offset_top = 303.0
+offset_right = 721.0
+offset_bottom = 334.0
+text = "Continue"
+
 [node name="LeftWall" type="StaticBody2D" parent="." unique_id=1686937118]
 position = Vector2(-639, 272)
 

@@ -1,14 +1,12 @@
 [gd_scene format=3 uid="uid://dkuwuqiv4s2oq"]
 
 [ext_resource type="Script" uid="uid://d2ntr6qj5ipa5" path="res://scripts/main_menu.gd" id="1_bqqt6"]
-[ext_resource type="Texture2D" uid="uid://eueef7kx0djb" path="res://assets/background.png" id="2_8ln24"]
 [ext_resource type="FontFile" uid="uid://d5vrfcakc278" path="res://assets/ThaleahFat.ttf" id="2_wu84c"]
 [ext_resource type="AudioStream" uid="uid://cuc12tdr1x2do" path="res://White Sands Day Night.mp3" id="4_wu84c"]
 [ext_resource type="Script" uid="uid://ctisnwwouusdr" path="res://scripts/music_h_slider.gd" id="5_8ln24"]
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ekxnf"]
-texture = ExtResource("2_8ln24")
-modulate_color = Color(0.69342947, 0.6934295, 0.69342947, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wu84c"]
+bg_color = Color(0.7448439, 0.5682385, 0.21764234, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vue75"]
 bg_color = Color(0.71966445, 0.55957043, 0.16583875, 1)
@@ -44,7 +42,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxTexture_ekxnf")
+theme_override_styles/panel = SubResource("StyleBoxFlat_wu84c")
 
 [node name="MainButtons" type="VBoxContainer" parent="." unique_id=715106524]
 modulate = Color(1, 1, 1, 0.8392157)
