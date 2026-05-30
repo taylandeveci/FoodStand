@@ -7,6 +7,7 @@ enum GameState {
 	CUSTOMER_WAITING,
 	SERVING,
 	CUSTOMER_LEAVING,
+	SHOP,
 	NIGHT,
 	NIGHT_WON,
 	NIGHT_FAILED
@@ -15,14 +16,20 @@ enum GameState {
 @export var trash_scene: PackedScene
 @export var customer_scene: PackedScene
 @export var enemy_scene: PackedScene
+@export var tank_scene: PackedScene
 
 @export var min_trash_count: int = 1
 @export var max_trash_count: int = 3
 @export var service_bar_speed: float = 140.0
 
-@export var night_duration: float = 15.0
+@export var night_duration: float = 60.0
 @export var enemy_spawn_interval: float = 4.0
-@export var max_enemies_alive: int = 2
+@export var max_enemies_alive: int = 5
+
+@export var customers_per_day: int = 3
+var customers_served_today: int = 0
+var customer_queue: Array[Node2D] = []
+var queue_spacing: float = 65.0
 
 var money: int = 0
 var local_appeal: int = 0
@@ -38,12 +45,64 @@ var current_recipe_sequence: Array = []
 var player_recipe_input: Array = []
 var recipe_input_active: bool = false
 
+# Shop system
+var shop_open: bool = false
+var current_shop_mode: String = ""
+var shop_bought_this_visit: Array[bool] = [false, false, false]
+
+# Base stats
+var base_food_cart_max_hp: int = 0
+var base_player_attack_damage: int = 0
+var base_player_recover_health: int = 0
+
+# İç mantık A/B, oyuncuya ekranda J/K gösterilecek
 var recipes := {
-	"BURGER": ["A", "A"],
-	"HOTDOG": ["A", "B"]
+	"BURGER": {
+		"display_name": "Burger",
+		"combo": ["A", "A"],
+		"base_coin": 4,
+		"base_appeal": 1
+	},
+	"HOTDOG": {
+		"display_name": "Hotdog",
+		"combo": ["A", "B"],
+		"base_coin": 3,
+		"base_appeal": 1
+	},
+	"TOAST": {
+		"display_name": "Toast",
+		"combo": ["B", "A"],
+		"base_coin": 5,
+		"base_appeal": 1
+	},
+	"SOUP": {
+		"display_name": "Soup",
+		"combo": ["B", "B"],
+		"base_coin": 5,
+		"base_appeal": 2
+	},
+	"MEATBALL": {
+		"display_name": "Meatball",
+		"combo": ["A", "B", "A"],
+		"base_coin": 7,
+		"base_appeal": 3
+	}
 }
 
+var recipe_display_map := {
+	"A": "J",
+	"B": "K"
+}
+
+const DISTRICT_SELECT_SCENE_PATH := "res://scenes/district_select.tscn"
+const MAIN_MENU_SCENE_PATH := "res://scenes/main_menu.tscn"
+const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
+
+@onready var day_background: Sprite2D = $DayBackground
+@onready var night_background: Sprite2D = $NightBackground
+
 @onready var player = $Player
+@onready var hud = get_node_or_null("HUD")
 @onready var trash_points: Node2D = $TrashPoints
 @onready var trash_container: Node2D = $TrashContainer
 @onready var food_cart = $FoodCart
@@ -72,8 +131,23 @@ var recipes := {
 @onready var hint_label: Label = get_node_or_null("HUD/HUDRoot/ServicePanel/HintLabel") as Label
 @onready var timing_bar: ProgressBar = get_node_or_null("HUD/HUDRoot/ServicePanel/TimingBar") as ProgressBar
 
+# Shop button refs
+@onready var shop_button_1: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton1") as Button
+@onready var shop_button_2: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton2") as Button
+@onready var shop_button_3: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton3") as Button
+@onready var shop_continue_button: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/ContinueButton") as Button
+
 func _ready() -> void:
 	randomize()
+
+	set_day_background()
+	local_appeal = RunManager.permanent_appeal_bonus
+
+	if food_cart:
+		base_food_cart_max_hp = food_cart.max_hp
+	if player:
+		base_player_attack_damage = player.attack_damage
+		base_player_recover_health = player.recover_health
 
 	if player and player.has_signal("health_changed"):
 		player.health_changed.connect(_on_player_health_changed)
@@ -101,11 +175,23 @@ func _ready() -> void:
 	enemy_spawn_timer.autostart = false
 	enemy_spawn_timer.timeout.connect(_on_enemy_spawn_timer_timeout)
 
+	if shop_button_1:
+		shop_button_1.pressed.connect(_on_shop_upgrade_1_pressed)
+	if shop_button_2:
+		shop_button_2.pressed.connect(_on_shop_upgrade_2_pressed)
+	if shop_button_3:
+		shop_button_3.pressed.connect(_on_shop_upgrade_3_pressed)
+	if shop_continue_button:
+		shop_continue_button.pressed.connect(_on_shop_continue_pressed)
+
 	if service_panel:
 		service_panel.visible = false
 
 	if result_label:
 		result_label.text = ""
+
+	if hud and hud.has_method("hide_shop_panel"):
+		hud.hide_shop_panel()
 
 	start_morning_phase()
 	update_ui()
@@ -120,6 +206,67 @@ func _process(delta: float) -> void:
 	if recipe_input_active:
 		handle_recipe_input()
 
+func set_day_background() -> void:
+	if day_background:
+		day_background.visible = true
+	if night_background:
+		night_background.visible = false
+
+func set_night_background() -> void:
+	if day_background:
+		day_background.visible = false
+	if night_background:
+		night_background.visible = true
+
+func get_recipe_data(recipe_name: String) -> Dictionary:
+	if recipes.has(recipe_name):
+		return recipes[recipe_name]
+	return {
+		"display_name": recipe_name,
+		"combo": ["A", "A"],
+		"base_coin": 1,
+		"base_appeal": 0
+	}
+
+func get_recipe_combo(recipe_name: String) -> Array:
+	var recipe_data: Dictionary = get_recipe_data(recipe_name)
+	return recipe_data.get("combo", ["A", "A"])
+
+func get_recipe_display_name(recipe_name: String) -> String:
+	var recipe_data: Dictionary = get_recipe_data(recipe_name)
+	return str(recipe_data.get("display_name", recipe_name))
+
+func get_available_order_pool() -> Array:
+	var unlocked_recipes: Array = RunManager.get_unlocked_recipe_names()
+	var pool: Array = []
+	var profile: Dictionary = RunManager.get_current_district_profile()
+	var favored_recipes: Array = profile.get("favored_recipes", [])
+
+	for recipe_name in unlocked_recipes:
+		if recipes.has(recipe_name):
+			pool.append(recipe_name)
+
+			# Favori tarifler daha sık gelsin
+			if recipe_name in favored_recipes:
+				pool.append(recipe_name)
+				pool.append(recipe_name)
+
+	if pool.is_empty():
+		pool = ["BURGER", "HOTDOG"]
+
+	return pool
+
+func apply_run_upgrades() -> void:
+	if food_cart:
+		var new_max_hp: int = base_food_cart_max_hp + RunManager.night_stand_hp_bonus
+		food_cart.max_hp = new_max_hp
+		food_cart.current_hp = new_max_hp
+		food_cart.hp_changed.emit(food_cart.current_hp, food_cart.max_hp)
+
+	if player:
+		player.attack_damage = base_player_attack_damage + RunManager.night_player_damage_bonus
+		player.recover_health = base_player_recover_health + RunManager.night_recover_health_bonus
+
 func start_morning_phase() -> void:
 	game_state = GameState.CLEANING
 	current_order = ""
@@ -128,10 +275,19 @@ func start_morning_phase() -> void:
 	recipe_input_active = false
 	player_recipe_input.clear()
 	current_recipe_sequence.clear()
+	customers_served_today = 0
+	shop_open = false
+	current_shop_mode = ""
+
+	set_day_background()
+	apply_run_upgrades()
 
 	clear_old_trash()
 	clear_customer()
 	clear_enemies()
+
+	if hud and hud.has_method("hide_shop_panel"):
+		hud.hide_shop_panel()
 
 	if food_cart and food_cart.has_method("reset_hp"):
 		food_cart.reset_hp()
@@ -142,8 +298,18 @@ func start_morning_phase() -> void:
 	if service_panel:
 		service_panel.visible = false
 
+	var district_profile: Dictionary = RunManager.get_current_district_profile()
+
 	set_status("Morning Prep: collect the trash.")
-	set_result("")
+	set_result("%s | Day %d / %d | %s" % [
+		RunManager.get_current_district_name(),
+		RunManager.get_current_day(),
+		RunManager.DAYS_PER_DISTRICT,
+		str(district_profile.get("description", ""))
+	])
+
+	if hud and hud.has_method("show_phase_morning_prep"):
+		hud.show_phase_morning_prep()
 
 	spawn_random_trash()
 	update_ui()
@@ -156,6 +322,7 @@ func clear_customer() -> void:
 	for child in customer_container.get_children():
 		child.queue_free()
 	active_customer = null
+	customer_queue.clear()
 
 func clear_enemies() -> void:
 	for child in enemy_container.get_children():
@@ -228,48 +395,105 @@ func _on_food_cart_interacted() -> void:
 
 func open_cart() -> void:
 	game_state = GameState.CUSTOMER_WALKING
-	set_status("Stand opened. A customer is coming.")
+	set_status("Stand opened. Customers are coming!")
 	set_result("Stand opened!")
-	spawn_customer()
+	spawn_customer_queue()
 
-func spawn_customer() -> void:
+func spawn_customer_queue() -> void:
 	if customer_scene == null:
-		push_error("customer_scene atanmamis. Main node'unda Customer.tscn bagla.")
+		push_error("customer_scene atanmamis.")
 		return
 
 	clear_customer()
+	customers_served_today = 0
 
-	active_customer = customer_scene.instantiate()
-	customer_container.add_child(active_customer)
-	active_customer.global_position = customer_spawn_point.global_position
+	var dir = sign(customer_spawn_point.global_position.x - customer_stop_point.global_position.x)
+	if dir == 0:
+		dir = 1
 
-	var order_keys: Array = recipes.keys()
-	current_order = order_keys[randi() % order_keys.size()]
-	current_recipe_sequence = recipes[current_order]
-	player_recipe_input.clear()
-	recipe_input_active = false
+	var district_profile: Dictionary = RunManager.get_current_district_profile()
+	var total_customers: int = customers_per_day + int(district_profile.get("customer_count_bonus", 0))
+	total_customers = max(total_customers, 1)
 
-	if active_customer.has_method("set_target"):
-		active_customer.call("set_target", customer_stop_point.global_position)
+	for i in range(total_customers):
+		var customer = customer_scene.instantiate()
+		customer_container.add_child(customer)
+		customer.global_position = customer_spawn_point.global_position + Vector2(i * queue_spacing * dir, 0)
 
-	if active_customer.has_method("set_order_text"):
-		active_customer.call("set_order_text", current_order)
+		customer.max_patience += RunManager.day_patience_bonus
+		customer.max_patience += float(district_profile.get("patience_bonus", 0.0))
+		customer.max_patience = max(customer.max_patience, 20.0)
 
-	if active_customer.has_signal("arrived"):
-		active_customer.arrived.connect(_on_customer_arrived)
+		if customer.has_signal("arrived"):
+			customer.arrived.connect(_on_customer_arrived.bind(customer))
+		if customer.has_signal("exited"):
+			customer.exited.connect(_on_customer_exited.bind(customer))
+		if customer.has_signal("patience_ran_out"):
+			customer.patience_ran_out.connect(_on_customer_patience_ran_out.bind(customer))
 
-	if active_customer.has_signal("exited"):
-		active_customer.exited.connect(_on_customer_exited)
+		customer_queue.append(customer)
 
-	if active_customer.has_signal("patience_ran_out"):
-		active_customer.patience_ran_out.connect(_on_customer_patience_ran_out)
+	update_queue_positions()
 
-func _on_customer_patience_ran_out() -> void:
-	if game_state != GameState.CUSTOMER_WAITING and game_state != GameState.SERVING:
+func update_queue_positions() -> void:
+	var dir = sign(customer_spawn_point.global_position.x - customer_stop_point.global_position.x)
+	if dir == 0:
+		dir = 1
+
+	for i in range(customer_queue.size()):
+		var customer = customer_queue[i]
+		var target_pos = customer_stop_point.global_position
+		target_pos.x += i * queue_spacing * dir
+
+		if customer.has_method("set_target"):
+			customer.call("set_target", target_pos)
+
+func _on_customer_arrived(customer: Node2D) -> void:
+	if customer_queue.size() > 0 and customer_queue[0] == customer:
+		active_customer = customer
+		game_state = GameState.CUSTOMER_WAITING
+
+		var order_pool: Array = get_available_order_pool()
+		current_order = order_pool[randi() % order_pool.size()]
+		current_recipe_sequence = get_recipe_combo(current_order)
+		player_recipe_input.clear()
+		recipe_input_active = false
+
+		if customer.has_method("set_order_text"):
+			customer.call("set_order_text", current_order)
+		if customer.has_method("show_order"):
+			customer.call("show_order")
+
+		set_status("Customer ready. Press E to start cooking.")
+		set_result("Order: %s" % current_order)
+	else:
+		if customer.has_method("stop_patience"):
+			customer.call_deferred("stop_patience")
+		if customer.has_method("hide_order"):
+			customer.call_deferred("hide_order")
+
+func advance_queue() -> void:
+	if customer_queue.size() > 0:
+		customer_queue.pop_front()
+
+	customers_served_today += 1
+	active_customer = null
+
+	if customers_served_today >= customers_per_day:
+		set_status("Day over. Waiting for customers to leave...")
+	else:
+		game_state = GameState.CUSTOMER_WALKING
+		update_queue_positions()
+
+func _on_customer_patience_ran_out(customer: Node2D) -> void:
+	if customer != active_customer:
 		return
 
 	recipe_input_active = false
 	player_recipe_input.clear()
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "")
 
 	if service_panel:
 		service_panel.visible = false
@@ -279,25 +503,31 @@ func _on_customer_patience_ran_out() -> void:
 
 	game_state = GameState.CUSTOMER_LEAVING
 
-	if active_customer and active_customer.has_method("leave_to"):
-		active_customer.call("leave_to", customer_exit_point.global_position)
+	if customer.has_method("leave_to"):
+		customer.call("leave_to", customer_exit_point.global_position)
 
-func _on_customer_arrived() -> void:
-	game_state = GameState.CUSTOMER_WAITING
-	set_status("Customer ready. Press E to start cooking.")
-	set_result("Order: %s" % current_order)
+	advance_queue()
 
-func _on_customer_exited() -> void:
-	active_customer = null
+func _on_customer_exited(_customer: Node2D) -> void:
+	await get_tree().process_frame
 
-	if game_state == GameState.CUSTOMER_LEAVING:
-		start_night_phase()
+	if customers_served_today >= customers_per_day and customer_container.get_child_count() == 0:
+		open_shop("night")
 
 func start_recipe_input_phase() -> void:
 	recipe_input_active = true
 	player_recipe_input.clear()
 
-	set_status("Enter recipe for %s" % current_order)
+	var combo_parts: Array = []
+	for key in current_recipe_sequence:
+		combo_parts.append(recipe_display_map.get(key, str(key)))
+
+	var combo_text = " + ".join(combo_parts)
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "Recipe: " + combo_text)
+
+	set_status("Enter recipe for %s" % get_recipe_display_name(current_order))
 	set_result("Use recipe keys.")
 
 func handle_recipe_input() -> void:
@@ -323,16 +553,27 @@ func register_recipe_input(value: String) -> void:
 		fail_recipe_input()
 		return
 
-	set_result("Recipe Input: %s" % str(player_recipe_input))
+	var display_parts: Array = []
+	for key in player_recipe_input:
+		display_parts.append(recipe_display_map.get(key, str(key)))
+
+	set_result("Recipe Input: %s" % " + ".join(display_parts))
 
 	if player_recipe_input.size() == current_recipe_sequence.size():
 		recipe_input_active = false
+
+		if food_cart and food_cart.has_method("set_recipe_hint"):
+			food_cart.call("set_recipe_hint", "")
+
 		set_status("Correct recipe! Now serve it.")
 		start_service_phase()
 
 func fail_recipe_input() -> void:
 	recipe_input_active = false
 	player_recipe_input.clear()
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "")
 
 	set_status("Wrong recipe.")
 	set_result("Customer left without paying.")
@@ -341,6 +582,8 @@ func fail_recipe_input() -> void:
 
 	if active_customer and active_customer.has_method("leave_to"):
 		active_customer.call("leave_to", customer_exit_point.global_position)
+
+	advance_queue()
 
 func start_service_phase() -> void:
 	game_state = GameState.SERVING
@@ -354,7 +597,7 @@ func start_service_phase() -> void:
 		service_panel.visible = true
 
 	if order_label:
-		order_label.text = "Order: %s" % current_order
+		order_label.text = "Order: %s" % get_recipe_display_name(current_order)
 
 	if hint_label:
 		hint_label.text = "Press E near the center."
@@ -384,18 +627,30 @@ func finish_service_phase() -> void:
 	if service_panel:
 		service_panel.visible = false
 
+	var district_profile: Dictionary = RunManager.get_current_district_profile()
+	var district_coin_bonus: int = int(district_profile.get("serve_coin_bonus", 0))
+
+	var recipe_data: Dictionary = get_recipe_data(current_order)
+	var base_coin: int = int(recipe_data.get("base_coin", 1))
+	var base_appeal: int = int(recipe_data.get("base_appeal", 0))
+
+	var perfect_min: float = clamp(45.0 - RunManager.day_timing_bonus, 0.0, 100.0)
+	var perfect_max: float = clamp(55.0 + RunManager.day_timing_bonus, 0.0, 100.0)
+	var nice_min: float = clamp(30.0 - RunManager.day_timing_bonus, 0.0, 100.0)
+	var nice_max: float = clamp(70.0 + RunManager.day_timing_bonus, 0.0, 100.0)
+
 	var result_text: String = "Bad Serve"
-	var coin_gain: int = 1
+	var coin_gain: int = max(1, base_coin - 2) + RunManager.day_coin_bonus + district_coin_bonus
 	var appeal_gain: int = 0
 
-	if timing_value >= 45.0 and timing_value <= 55.0:
+	if timing_value >= perfect_min and timing_value <= perfect_max:
 		result_text = "Perfect Serve"
-		coin_gain = 5
-		appeal_gain = 2
-	elif timing_value >= 30.0 and timing_value <= 70.0:
+		coin_gain = base_coin + 2 + RunManager.day_coin_bonus + district_coin_bonus
+		appeal_gain = base_appeal + 1
+	elif timing_value >= nice_min and timing_value <= nice_max:
 		result_text = "Nice Serve"
-		coin_gain = 3
-		appeal_gain = 1
+		coin_gain = base_coin + RunManager.day_coin_bonus + district_coin_bonus
+		appeal_gain = base_appeal
 
 	money += coin_gain
 	local_appeal += appeal_gain
@@ -405,14 +660,196 @@ func finish_service_phase() -> void:
 	if active_customer and active_customer.has_method("leave_to"):
 		active_customer.call("leave_to", customer_exit_point.global_position)
 
-	set_status("Customer is leaving. Night is next.")
-	set_result("%s | +%d coin" % [result_text, coin_gain])
+	set_status("%s served. Next customer coming." % get_recipe_display_name(current_order))
+	set_result("%s | +%d coin | +%d appeal" % [result_text, coin_gain, appeal_gain])
 
 	update_ui()
+	advance_queue()
+
+func open_shop(mode: String) -> void:
+	shop_open = true
+	current_shop_mode = mode
+	game_state = GameState.SHOP
+	shop_bought_this_visit = [false, false, false]
+
+	var title_text := ""
+	var mode_text := ""
+	var upgrades: Array = get_shop_upgrade_texts(mode)
+
+	if mode == "night":
+		title_text = "NIGHT MARKET"
+		mode_text = "Prepare for tonight's defense"
+	else:
+		title_text = "DAY MARKET"
+		mode_text = "Prepare for tomorrow's service"
+
+	if hud and hud.has_method("show_shop_panel"):
+		hud.show_shop_panel(
+			title_text,
+			mode_text,
+			money,
+			upgrades[0],
+			upgrades[1],
+			upgrades[2]
+		)
+
+	update_shop_buttons()
+	set_status("Choose an upgrade or continue.")
+	set_result("")
+
+func close_shop() -> void:
+	shop_open = false
+	current_shop_mode = ""
+
+	if hud and hud.has_method("hide_shop_panel"):
+		hud.hide_shop_panel()
+
+func get_shop_upgrade_texts(mode: String) -> Array:
+	if mode == "night":
+		return [
+			"Reinforced Cart\n+5 Stand HP ($6)",
+			"Sharper Knife\n+1 Attack Damage ($7)",
+			"Emergency Training\n+1 Recover HP ($5)"
+		]
+
+	return [
+		"Better Ingredients\n+1 Coin per Serve ($5)",
+		"Customer Charm\n+20 Patience ($6)",
+		"Steady Hands\n+5 Timing Zone ($7)"
+	]
+
+func get_shop_upgrade_cost(mode: String, index: int) -> int:
+	if mode == "night":
+		match index:
+			0:
+				return 6
+			1:
+				return 7
+			2:
+				return 5
+			_:
+				return 999
+
+	match index:
+		0:
+			return 5
+		1:
+			return 6
+		2:
+			return 7
+		_:
+			return 999
+
+func get_shop_upgrade_name(mode: String, index: int) -> String:
+	if mode == "night":
+		match index:
+			0:
+				return "Reinforced Cart"
+			1:
+				return "Sharper Knife"
+			2:
+				return "Emergency Training"
+			_:
+				return "Unknown"
+
+	match index:
+		0:
+			return "Better Ingredients"
+		1:
+			return "Customer Charm"
+		2:
+			return "Steady Hands"
+		_:
+			return "Unknown"
+
+func update_shop_buttons() -> void:
+	if hud and hud.has_method("update_shop_money"):
+		hud.update_shop_money(money)
+
+	var cost_1 := get_shop_upgrade_cost(current_shop_mode, 0)
+	var cost_2 := get_shop_upgrade_cost(current_shop_mode, 1)
+	var cost_3 := get_shop_upgrade_cost(current_shop_mode, 2)
+
+	if shop_button_1:
+		shop_button_1.disabled = shop_bought_this_visit[0] or money < cost_1
+	if shop_button_2:
+		shop_button_2.disabled = shop_bought_this_visit[1] or money < cost_2
+	if shop_button_3:
+		shop_button_3.disabled = shop_bought_this_visit[2] or money < cost_3
+
+	if shop_continue_button:
+		shop_continue_button.disabled = false
+
+func buy_shop_upgrade(index: int) -> void:
+	if not shop_open:
+		return
+
+	if index < 0 or index > 2:
+		return
+
+	if shop_bought_this_visit[index]:
+		return
+
+	var cost := get_shop_upgrade_cost(current_shop_mode, index)
+	if money < cost:
+		set_result("Not enough money.")
+		return
+
+	money -= cost
+	apply_shop_upgrade(current_shop_mode, index)
+	shop_bought_this_visit[index] = true
+
+	update_shop_buttons()
+	update_ui()
+
+	set_result("Purchased: %s" % get_shop_upgrade_name(current_shop_mode, index))
+
+func apply_shop_upgrade(mode: String, index: int) -> void:
+	if mode == "night":
+		match index:
+			0:
+				RunManager.night_stand_hp_bonus += 5
+			1:
+				RunManager.night_player_damage_bonus += 1
+			2:
+				RunManager.night_recover_health_bonus += 1
+		return
+
+	match index:
+		0:
+			RunManager.day_coin_bonus += 1
+		1:
+			RunManager.day_patience_bonus += 20.0
+		2:
+			RunManager.day_timing_bonus += 5.0
+
+func continue_after_shop() -> void:
+	var mode := current_shop_mode
+	close_shop()
+
+	if mode == "night":
+		start_night_phase()
+	else:
+		start_morning_phase()
+
+func _on_shop_upgrade_1_pressed() -> void:
+	buy_shop_upgrade(0)
+
+func _on_shop_upgrade_2_pressed() -> void:
+	buy_shop_upgrade(1)
+
+func _on_shop_upgrade_3_pressed() -> void:
+	buy_shop_upgrade(2)
+
+func _on_shop_continue_pressed() -> void:
+	continue_after_shop()
 
 func start_night_phase() -> void:
 	game_state = GameState.NIGHT
 	clear_enemies()
+
+	set_night_background()
+	apply_run_upgrades()
 
 	night_timer.stop()
 	enemy_spawn_timer.stop()
@@ -426,29 +863,36 @@ func start_night_phase() -> void:
 	set_status("Night started! Protect the stand.")
 	set_result("Survive until dawn.")
 
+	if hud and hud.has_method("show_phase_night_started"):
+		hud.show_phase_night_started()
+
 func _on_enemy_spawn_timer_timeout() -> void:
 	if game_state != GameState.NIGHT:
-		return
-
-	if enemy_scene == null:
-		push_error("enemy_scene atanmamis. Main node'unda Enemy.tscn bagla.")
 		return
 
 	if enemy_container.get_child_count() >= max_enemies_alive:
 		return
 
-	var enemy = enemy_scene.instantiate()
-	enemy_container.add_child(enemy)
+	var enemy_instance = null
+
+	if tank_scene != null and randf() < 0.2:
+		enemy_instance = tank_scene.instantiate()
+		print("DİKKAT: TANK SPAWN OLDU!")
+	else:
+		if enemy_scene == null:
+			push_error("enemy_scene atanmamis.")
+			return
+		enemy_instance = enemy_scene.instantiate()
+
+	enemy_container.add_child(enemy_instance)
 
 	if randi() % 2 == 0:
-		enemy.global_position = enemy_spawn_left.global_position
+		enemy_instance.global_position = enemy_spawn_left.global_position
 	else:
-		enemy.global_position = enemy_spawn_right.global_position
+		enemy_instance.global_position = enemy_spawn_right.global_position
 
-	enemy.stand_ref = food_cart
-	enemy.player_ref = player
-
-	print("ENEMY SPAWNED AT:", enemy.global_position)
+	enemy_instance.stand_ref = food_cart
+	enemy_instance.player_ref = player
 
 func _on_night_timer_timeout() -> void:
 	if game_state != GameState.NIGHT:
@@ -464,8 +908,29 @@ func _on_night_timer_timeout() -> void:
 	set_status("Night survived!")
 	set_result("You protected the stand.")
 
-	await get_tree().create_timer(2.0).timeout
-	start_morning_phase()
+	if hud and hud.has_method("show_phase_night_survived"):
+		hud.show_phase_night_survived()
+
+	var run_result := RunManager.register_night_won()
+
+	match run_result:
+		"next_day":
+			await get_tree().create_timer(1.5).timeout
+			open_shop("day")
+
+		"district_complete":
+			RunManager.prepare_current_district_reward_selection()
+			set_status("%s completed!" % RunManager.get_current_district_name())
+			set_result("Choose 1 district reward.")
+			await get_tree().create_timer(2.0).timeout
+			get_tree().change_scene_to_file(REWARD_SELECT_SCENE_PATH)
+
+		"all_complete":
+			RunManager.prepare_current_district_reward_selection()
+			set_status("Final district completed!")
+			set_result("Choose your final reward.")
+			await get_tree().create_timer(2.0).timeout
+			get_tree().change_scene_to_file(REWARD_SELECT_SCENE_PATH)
 
 func _on_food_cart_destroyed() -> void:
 	if game_state != GameState.NIGHT:
@@ -477,11 +942,22 @@ func _on_food_cart_destroyed() -> void:
 	game_state = GameState.NIGHT_FAILED
 
 	set_status("Stand destroyed!")
-	set_result("Game Over")
+	set_result("Run reset. Returning to main menu.")
+
+	if hud and hud.has_method("show_game_over"):
+		hud.show_game_over()
+
+	RunManager.reset_run()
+
+	await get_tree().create_timer(2.0).timeout
+	get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
 
 func _on_player_down_started() -> void:
 	if game_state == GameState.NIGHT:
 		set_status("You are down! Enemies are attacking the stand.")
+
+		if hud and hud.has_method("show_player_down"):
+			hud.show_player_down()
 
 func _on_player_recovered() -> void:
 	if game_state == GameState.NIGHT:

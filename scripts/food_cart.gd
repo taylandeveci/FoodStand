@@ -15,6 +15,9 @@ var current_hp: int = 0
 func _ready() -> void:
 	print("FoodCart _ready calisti")
 	print("Node path:", get_path())
+	
+	# KRİTİK EKLEME: Düşmanların bizi hedef alabilmesi için kendimizi Stand grubuna ekliyoruz
+	add_to_group("Stand")
 
 	current_hp = max_hp
 	hp_changed.emit(current_hp, max_hp)
@@ -41,10 +44,17 @@ func _process(_delta: float) -> void:
 		print("E basildi, cart interact")
 		interacted.emit()
 
+func set_recipe_hint(text_value: String) -> void:
+	if prompt_label:
+		prompt_label.text = text_value
+		prompt_label.visible = true
+
 func _on_body_entered(body: Node) -> void:
 	print("InteractArea body_entered:", body.name)
 	if body.is_in_group("player"):
 		player_in_range = true
+		if prompt_label.text == "":
+			prompt_label.text = "Press E to Interact"
 		prompt_label.visible = true
 		print("player range icinde")
 
@@ -53,6 +63,7 @@ func _on_body_exited(body: Node) -> void:
 	if body.is_in_group("player"):
 		player_in_range = false
 		prompt_label.visible = false
+		prompt_label.text = ""
 		print("player range disinda")
 
 func take_damage(amount: int) -> void:
@@ -64,6 +75,7 @@ func take_damage(amount: int) -> void:
 
 	if current_hp == 0:
 		destroyed.emit()
+		print("TEZGAH YIKILDI! GAME OVER!")
 
 func reset_hp() -> void:
 	current_hp = max_hp

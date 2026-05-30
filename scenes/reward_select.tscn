@@ -1,0 +1,48 @@
+[gd_scene format=3 uid="uid://kyfqnnsy4s4a"]
+
+[ext_resource type="Script" uid="uid://bcdq23tqfqqjd" path="res://scripts/reward_select.gd" id="1_6suqt"]
+
+[node name="RewardSelect" type="Control" unique_id=619995877]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_6suqt")
+
+[node name="Panel" type="Panel" parent="." unique_id=1340253092]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 721.0
+
+[node name="TitleLabel" type="Label" parent="Panel" unique_id=1887826455]
+layout_mode = 0
+offset_left = 596.0
+offset_top = 60.0
+offset_right = 757.0
+offset_bottom = 83.0
+text = "Choose Your Reward"
+
+[node name="InfoLabel" type="Label" parent="Panel" unique_id=1075851047]
+layout_mode = 0
+offset_left = 539.0
+offset_top = 98.0
+offset_right = 819.0
+offset_bottom = 147.0
+text = "District completed! Pick one reward.
+"
+
+[node name="RewardList" type="VBoxContainer" parent="Panel" unique_id=999495788]
+layout_mode = 0
+offset_left = 616.0
+offset_top = 206.0
+offset_right = 656.0
+offset_bottom = 246.0
+
+[node name="RewardButton1" type="Button" parent="Panel/RewardList" unique_id=425024861]
+layout_mode = 2
+
+[node name="RewardButton2" type="Button" parent="Panel/RewardList" unique_id=2133049673]
+layout_mode = 2
+
+[node name="RewardButton3" type="Button" parent="Panel/RewardList" unique_id=1594011889]
+layout_mode = 2

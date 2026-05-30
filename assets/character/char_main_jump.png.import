@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c6cnb6v73eiaj"
-path="res://.godot/imported/City background.png-10364690a509dcb78c0efa0348017b45.ctex"
+uid="uid://d3jfavutfwnfh"
+path="res://.godot/imported/char_main_jump.png-c49296342d85b53f1b29fcf197e4ef91.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/tileset/City background.png"
-dest_files=["res://.godot/imported/City background.png-10364690a509dcb78c0efa0348017b45.ctex"]
+source_file="res://assets/character/char_main_jump.png"
+dest_files=["res://.godot/imported/char_main_jump.png-c49296342d85b53f1b29fcf197e4ef91.ctex"]
 
 [params]
 
