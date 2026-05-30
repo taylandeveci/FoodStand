@@ -1,5 +1,10 @@
 extends Node2D
 
+const MissionPanelScript = preload("res://scripts/mission_panel.gd")
+
+const MISSION_COLLECT_TRASH := "collect_trash"
+const MISSION_GO_FOOD_CART := "go_food_cart"
+
 enum GameState {
 	CLEANING,
 	OPEN_CART,
@@ -123,6 +128,7 @@ const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
 @onready var trash_label: Label = get_node_or_null("HUD/HUDRoot/TrashLabel") as Label
 @onready var stand_hp_label: Label = get_node_or_null("HUD/HUDRoot/StandHpLabel") as Label
 @onready var health_bar: TextureProgressBar = get_node_or_null("HUD/HUDRoot/HealthBar") as TextureProgressBar
+@onready var hud_root: Control = get_node_or_null("HUD/HUDRoot") as Control
 @onready var status_label: Label = get_node_or_null("HUD/HUDRoot/StatusLabel") as Label
 @onready var result_label: Label = get_node_or_null("HUD/HUDRoot/ResultLabel") as Label
 
@@ -136,6 +142,8 @@ const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
 @onready var shop_button_2: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton2") as Button
 @onready var shop_button_3: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton3") as Button
 @onready var shop_continue_button: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/ContinueButton") as Button
+
+var mission_panel = null
 
 func _ready() -> void:
 	randomize()
@@ -192,6 +200,8 @@ func _ready() -> void:
 
 	if hud and hud.has_method("hide_shop_panel"):
 		hud.hide_shop_panel()
+
+	setup_mission_panel()
 
 	start_morning_phase()
 	update_ui()
@@ -300,7 +310,9 @@ func start_morning_phase() -> void:
 
 	var district_profile: Dictionary = RunManager.get_current_district_profile()
 
-	set_status("Morning Prep: collect the trash.")
+	reset_mission_panel()
+	add_mission(MISSION_COLLECT_TRASH)
+	clear_status()
 	set_result("%s | Day %d / %d | %s" % [
 		RunManager.get_current_district_name(),
 		RunManager.get_current_day(),
@@ -374,7 +386,9 @@ func _check_trash_after_removal() -> void:
 
 	if game_state == GameState.CLEANING and trash_container.get_child_count() == 0:
 		game_state = GameState.OPEN_CART
-		set_status("All trash collected. Go to the food cart and press E.")
+		complete_mission(MISSION_COLLECT_TRASH)
+		add_mission(MISSION_GO_FOOD_CART)
+		clear_status()
 		set_result("Area cleaned!")
 
 func _on_food_cart_interacted() -> void:
@@ -387,7 +401,7 @@ func _on_food_cart_interacted() -> void:
 				start_recipe_input_phase()
 
 		GameState.CLEANING:
-			set_status("Collect all trash first.")
+			clear_status()
 			set_result("Trash left: %d" % trash_container.get_child_count())
 
 		_:
@@ -395,6 +409,7 @@ func _on_food_cart_interacted() -> void:
 
 func open_cart() -> void:
 	game_state = GameState.CUSTOMER_WALKING
+	complete_mission(MISSION_GO_FOOD_CART)
 	set_status("Stand opened. Customers are coming!")
 	set_result("Stand opened!")
 	spawn_customer_queue()
@@ -976,9 +991,32 @@ func set_status(text_value: String) -> void:
 	if status_label:
 		status_label.text = text_value
 
+func clear_status() -> void:
+	set_status("")
+
 func set_result(text_value: String) -> void:
 	if result_label:
 		result_label.text = text_value
+
+func setup_mission_panel() -> void:
+	if hud_root == null:
+		return
+
+	if mission_panel == null:
+		mission_panel = MissionPanelScript.new()
+		hud_root.add_child(mission_panel)
+
+func reset_mission_panel() -> void:
+	if mission_panel and mission_panel.has_method("reset_missions"):
+		mission_panel.call("reset_missions")
+
+func add_mission(mission_id: String) -> void:
+	if mission_panel and mission_panel.has_method("add_mission"):
+		mission_panel.call("add_mission", mission_id)
+
+func complete_mission(mission_id: String) -> void:
+	if mission_panel and mission_panel.has_method("complete_mission"):
+		mission_panel.call("complete_mission", mission_id)
 
 func update_ui() -> void:
 	if coin_label:
