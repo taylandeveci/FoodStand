@@ -1,0 +1,998 @@
+extends Node2D
+
+enum GameState {
+	CLEANING,
+	OPEN_CART,
+	CUSTOMER_WALKING,
+	CUSTOMER_WAITING,
+	SERVING,
+	CUSTOMER_LEAVING,
+	SHOP,
+	NIGHT,
+	NIGHT_WON,
+	NIGHT_FAILED
+}
+
+@export var trash_scene: PackedScene
+@export var customer_scene: PackedScene
+@export var enemy_scene: PackedScene
+@export var tank_scene: PackedScene
+
+@export var min_trash_count: int = 1
+@export var max_trash_count: int = 3
+@export var service_bar_speed: float = 140.0
+
+@export var night_duration: float = 60.0
+@export var enemy_spawn_interval: float = 4.0
+@export var max_enemies_alive: int = 5
+
+@export var customers_per_day: int = 3
+var customers_served_today: int = 0
+var customer_queue: Array[Node2D] = []
+var queue_spacing: float = 65.0
+
+var money: int = 0
+var local_appeal: int = 0
+var game_state: int = GameState.CLEANING
+
+var active_customer: Node2D = null
+var current_order: String = ""
+var timing_value: float = 0.0
+var timing_direction: float = 1.0
+
+# Recipe system
+var current_recipe_sequence: Array = []
+var player_recipe_input: Array = []
+var recipe_input_active: bool = false
+
+# Shop system
+var shop_open: bool = false
+var current_shop_mode: String = ""
+var shop_bought_this_visit: Array[bool] = [false, false, false]
+
+# Base stats
+var base_food_cart_max_hp: int = 0
+var base_player_attack_damage: int = 0
+var base_player_recover_health: int = 0
+
+# İç mantık A/B, oyuncuya ekranda J/K gösterilecek
+var recipes := {
+	"BURGER": {
+		"display_name": "Burger",
+		"combo": ["A", "A"],
+		"base_coin": 4,
+		"base_appeal": 1
+	},
+	"HOTDOG": {
+		"display_name": "Hotdog",
+		"combo": ["A", "B"],
+		"base_coin": 3,
+		"base_appeal": 1
+	},
+	"TOAST": {
+		"display_name": "Toast",
+		"combo": ["B", "A"],
+		"base_coin": 5,
+		"base_appeal": 1
+	},
+	"SOUP": {
+		"display_name": "Soup",
+		"combo": ["B", "B"],
+		"base_coin": 5,
+		"base_appeal": 2
+	},
+	"MEATBALL": {
+		"display_name": "Meatball",
+		"combo": ["A", "B", "A"],
+		"base_coin": 7,
+		"base_appeal": 3
+	}
+}
+
+var recipe_display_map := {
+	"A": "J",
+	"B": "K"
+}
+
+const DISTRICT_SELECT_SCENE_PATH := "res://scenes/district_select.tscn"
+const MAIN_MENU_SCENE_PATH := "res://scenes/main_menu.tscn"
+const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
+
+@onready var day_background: Sprite2D = $DayBackground
+@onready var night_background: Sprite2D = $NightBackground
+
+@onready var player = $Player
+@onready var hud = get_node_or_null("HUD")
+@onready var trash_points: Node2D = $TrashPoints
+@onready var trash_container: Node2D = $TrashContainer
+@onready var food_cart = $FoodCart
+
+@onready var customer_spawn_point: Marker2D = $CustomerSpawnPoint
+@onready var customer_stop_point: Marker2D = $CustomerStopPoint
+@onready var customer_exit_point: Marker2D = $CustomerExitPoint
+@onready var customer_container: Node2D = $CustomerContainer
+
+@onready var enemy_container: Node2D = $EnemyContainer
+@onready var enemy_spawn_left: Marker2D = $EnemySpawnLeft
+@onready var enemy_spawn_right: Marker2D = $EnemySpawnRight
+@onready var night_timer: Timer = $NightTimer
+@onready var enemy_spawn_timer: Timer = $EnemySpawnTimer
+
+@onready var coin_label: Label = get_node_or_null("HUD/HUDRoot/CoinLabel") as Label
+@onready var appeal_label: Label = get_node_or_null("HUD/HUDRoot/AppealLabel") as Label
+@onready var trash_label: Label = get_node_or_null("HUD/HUDRoot/TrashLabel") as Label
+@onready var stand_hp_label: Label = get_node_or_null("HUD/HUDRoot/StandHpLabel") as Label
+@onready var health_bar: TextureProgressBar = get_node_or_null("HUD/HUDRoot/HealthBar") as TextureProgressBar
+@onready var status_label: Label = get_node_or_null("HUD/HUDRoot/StatusLabel") as Label
+@onready var result_label: Label = get_node_or_null("HUD/HUDRoot/ResultLabel") as Label
+
+@onready var service_panel: Panel = get_node_or_null("HUD/HUDRoot/ServicePanel") as Panel
+@onready var order_label: Label = get_node_or_null("HUD/HUDRoot/ServicePanel/OrderLabel") as Label
+@onready var hint_label: Label = get_node_or_null("HUD/HUDRoot/ServicePanel/HintLabel") as Label
+@onready var timing_bar: ProgressBar = get_node_or_null("HUD/HUDRoot/ServicePanel/TimingBar") as ProgressBar
+
+# Shop button refs
+@onready var shop_button_1: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton1") as Button
+@onready var shop_button_2: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton2") as Button
+@onready var shop_button_3: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton3") as Button
+@onready var shop_continue_button: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/ContinueButton") as Button
+
+func _ready() -> void:
+	randomize()
+
+	set_day_background()
+	local_appeal = RunManager.permanent_appeal_bonus
+
+	if food_cart:
+		base_food_cart_max_hp = food_cart.max_hp
+	if player:
+		base_player_attack_damage = player.attack_damage
+		base_player_recover_health = player.recover_health
+
+	if player and player.has_signal("health_changed"):
+		player.health_changed.connect(_on_player_health_changed)
+
+	if player and player.has_signal("down_started"):
+		player.down_started.connect(_on_player_down_started)
+
+	if player and player.has_signal("recovered"):
+		player.recovered.connect(_on_player_recovered)
+
+	if food_cart and food_cart.has_signal("interacted"):
+		food_cart.interacted.connect(_on_food_cart_interacted)
+
+	if food_cart and food_cart.has_signal("hp_changed"):
+		food_cart.hp_changed.connect(_on_food_cart_hp_changed)
+
+	if food_cart and food_cart.has_signal("destroyed"):
+		food_cart.destroyed.connect(_on_food_cart_destroyed)
+
+	night_timer.one_shot = true
+	night_timer.autostart = false
+	night_timer.timeout.connect(_on_night_timer_timeout)
+
+	enemy_spawn_timer.one_shot = false
+	enemy_spawn_timer.autostart = false
+	enemy_spawn_timer.timeout.connect(_on_enemy_spawn_timer_timeout)
+
+	if shop_button_1:
+		shop_button_1.pressed.connect(_on_shop_upgrade_1_pressed)
+	if shop_button_2:
+		shop_button_2.pressed.connect(_on_shop_upgrade_2_pressed)
+	if shop_button_3:
+		shop_button_3.pressed.connect(_on_shop_upgrade_3_pressed)
+	if shop_continue_button:
+		shop_continue_button.pressed.connect(_on_shop_continue_pressed)
+
+	if service_panel:
+		service_panel.visible = false
+
+	if result_label:
+		result_label.text = ""
+
+	if hud and hud.has_method("hide_shop_panel"):
+		hud.hide_shop_panel()
+
+	start_morning_phase()
+	update_ui()
+
+func _process(delta: float) -> void:
+	if game_state == GameState.SERVING:
+		update_service_bar(delta)
+
+		if Input.is_action_just_pressed("interact"):
+			finish_service_phase()
+
+	if recipe_input_active:
+		handle_recipe_input()
+
+func set_day_background() -> void:
+	if day_background:
+		day_background.visible = true
+	if night_background:
+		night_background.visible = false
+
+func set_night_background() -> void:
+	if day_background:
+		day_background.visible = false
+	if night_background:
+		night_background.visible = true
+
+func get_recipe_data(recipe_name: String) -> Dictionary:
+	if recipes.has(recipe_name):
+		return recipes[recipe_name]
+	return {
+		"display_name": recipe_name,
+		"combo": ["A", "A"],
+		"base_coin": 1,
+		"base_appeal": 0
+	}
+
+func get_recipe_combo(recipe_name: String) -> Array:
+	var recipe_data: Dictionary = get_recipe_data(recipe_name)
+	return recipe_data.get("combo", ["A", "A"])
+
+func get_recipe_display_name(recipe_name: String) -> String:
+	var recipe_data: Dictionary = get_recipe_data(recipe_name)
+	return str(recipe_data.get("display_name", recipe_name))
+
+func get_available_order_pool() -> Array:
+	var unlocked_recipes: Array = RunManager.get_unlocked_recipe_names()
+	var pool: Array = []
+	var profile: Dictionary = RunManager.get_current_district_profile()
+	var favored_recipes: Array = profile.get("favored_recipes", [])
+
+	for recipe_name in unlocked_recipes:
+		if recipes.has(recipe_name):
+			pool.append(recipe_name)
+
+			# Favori tarifler daha sık gelsin
+			if recipe_name in favored_recipes:
+				pool.append(recipe_name)
+				pool.append(recipe_name)
+
+	if pool.is_empty():
+		pool = ["BURGER", "HOTDOG"]
+
+	return pool
+
+func apply_run_upgrades() -> void:
+	if food_cart:
+		var new_max_hp: int = base_food_cart_max_hp + RunManager.night_stand_hp_bonus
+		food_cart.max_hp = new_max_hp
+		food_cart.current_hp = new_max_hp
+		food_cart.hp_changed.emit(food_cart.current_hp, food_cart.max_hp)
+
+	if player:
+		player.attack_damage = base_player_attack_damage + RunManager.night_player_damage_bonus
+		player.recover_health = base_player_recover_health + RunManager.night_recover_health_bonus
+
+func start_morning_phase() -> void:
+	game_state = GameState.CLEANING
+	current_order = ""
+	timing_value = 0.0
+	timing_direction = 1.0
+	recipe_input_active = false
+	player_recipe_input.clear()
+	current_recipe_sequence.clear()
+	customers_served_today = 0
+	shop_open = false
+	current_shop_mode = ""
+
+	set_day_background()
+	apply_run_upgrades()
+
+	clear_old_trash()
+	clear_customer()
+	clear_enemies()
+
+	if hud and hud.has_method("hide_shop_panel"):
+		hud.hide_shop_panel()
+
+	if food_cart and food_cart.has_method("reset_hp"):
+		food_cart.reset_hp()
+
+	night_timer.stop()
+	enemy_spawn_timer.stop()
+
+	if service_panel:
+		service_panel.visible = false
+
+	var district_profile: Dictionary = RunManager.get_current_district_profile()
+
+	set_status("Morning Prep: collect the trash.")
+	set_result("%s | Day %d / %d | %s" % [
+		RunManager.get_current_district_name(),
+		RunManager.get_current_day(),
+		RunManager.DAYS_PER_DISTRICT,
+		str(district_profile.get("description", ""))
+	])
+
+	if hud and hud.has_method("show_phase_morning_prep"):
+		hud.show_phase_morning_prep()
+
+	spawn_random_trash()
+	update_ui()
+
+func clear_old_trash() -> void:
+	for child in trash_container.get_children():
+		child.queue_free()
+
+func clear_customer() -> void:
+	for child in customer_container.get_children():
+		child.queue_free()
+	active_customer = null
+	customer_queue.clear()
+
+func clear_enemies() -> void:
+	for child in enemy_container.get_children():
+		child.queue_free()
+
+func spawn_random_trash() -> void:
+	if trash_scene == null:
+		push_error("trash_scene atanmamis. Main node'unda Trash.tscn bagla.")
+		return
+
+	var points: Array = trash_points.get_children()
+
+	if points.is_empty():
+		push_error("TrashPoints altinda hic spawn noktasi yok.")
+		return
+
+	points.shuffle()
+
+	var real_min: int = min(min_trash_count, points.size())
+	var real_max: int = min(max_trash_count, points.size())
+
+	if real_min > real_max:
+		real_min = real_max
+
+	var spawn_count: int = randi_range(real_min, real_max)
+
+	for i in range(spawn_count):
+		var point = points[i]
+		if point == null:
+			continue
+
+		var trash_instance = trash_scene.instantiate()
+		trash_container.add_child(trash_instance)
+		trash_instance.global_position = point.global_position
+
+		if trash_instance.has_signal("collected"):
+			trash_instance.collected.connect(_on_trash_collected)
+
+	update_ui()
+
+func _on_trash_collected(money_gain: int, appeal_gain: int) -> void:
+	money += money_gain
+	local_appeal += appeal_gain
+	_check_trash_after_removal()
+
+func _check_trash_after_removal() -> void:
+	await get_tree().process_frame
+	update_ui()
+
+	if game_state == GameState.CLEANING and trash_container.get_child_count() == 0:
+		game_state = GameState.OPEN_CART
+		set_status("All trash collected. Go to the food cart and press E.")
+		set_result("Area cleaned!")
+
+func _on_food_cart_interacted() -> void:
+	match game_state:
+		GameState.OPEN_CART:
+			open_cart()
+
+		GameState.CUSTOMER_WAITING:
+			if not recipe_input_active:
+				start_recipe_input_phase()
+
+		GameState.CLEANING:
+			set_status("Collect all trash first.")
+			set_result("Trash left: %d" % trash_container.get_child_count())
+
+		_:
+			pass
+
+func open_cart() -> void:
+	game_state = GameState.CUSTOMER_WALKING
+	set_status("Stand opened. Customers are coming!")
+	set_result("Stand opened!")
+	spawn_customer_queue()
+
+func spawn_customer_queue() -> void:
+	if customer_scene == null:
+		push_error("customer_scene atanmamis.")
+		return
+
+	clear_customer()
+	customers_served_today = 0
+
+	var dir = sign(customer_spawn_point.global_position.x - customer_stop_point.global_position.x)
+	if dir == 0:
+		dir = 1
+
+	var district_profile: Dictionary = RunManager.get_current_district_profile()
+	var total_customers: int = customers_per_day + int(district_profile.get("customer_count_bonus", 0))
+	total_customers = max(total_customers, 1)
+
+	for i in range(total_customers):
+		var customer = customer_scene.instantiate()
+		customer_container.add_child(customer)
+		customer.global_position = customer_spawn_point.global_position + Vector2(i * queue_spacing * dir, 0)
+
+		customer.max_patience += RunManager.day_patience_bonus
+		customer.max_patience += float(district_profile.get("patience_bonus", 0.0))
+		customer.max_patience = max(customer.max_patience, 20.0)
+
+		if customer.has_signal("arrived"):
+			customer.arrived.connect(_on_customer_arrived.bind(customer))
+		if customer.has_signal("exited"):
+			customer.exited.connect(_on_customer_exited.bind(customer))
+		if customer.has_signal("patience_ran_out"):
+			customer.patience_ran_out.connect(_on_customer_patience_ran_out.bind(customer))
+
+		customer_queue.append(customer)
+
+	update_queue_positions()
+
+func update_queue_positions() -> void:
+	var dir = sign(customer_spawn_point.global_position.x - customer_stop_point.global_position.x)
+	if dir == 0:
+		dir = 1
+
+	for i in range(customer_queue.size()):
+		var customer = customer_queue[i]
+		var target_pos = customer_stop_point.global_position
+		target_pos.x += i * queue_spacing * dir
+
+		if customer.has_method("set_target"):
+			customer.call("set_target", target_pos)
+
+func _on_customer_arrived(customer: Node2D) -> void:
+	if customer_queue.size() > 0 and customer_queue[0] == customer:
+		active_customer = customer
+		game_state = GameState.CUSTOMER_WAITING
+
+		var order_pool: Array = get_available_order_pool()
+		current_order = order_pool[randi() % order_pool.size()]
+		current_recipe_sequence = get_recipe_combo(current_order)
+		player_recipe_input.clear()
+		recipe_input_active = false
+
+		if customer.has_method("set_order_text"):
+			customer.call("set_order_text", current_order)
+		if customer.has_method("show_order"):
+			customer.call("show_order")
+
+		set_status("Customer ready. Press E to start cooking.")
+		set_result("Order: %s" % current_order)
+	else:
+		if customer.has_method("stop_patience"):
+			customer.call_deferred("stop_patience")
+		if customer.has_method("hide_order"):
+			customer.call_deferred("hide_order")
+
+func advance_queue() -> void:
+	if customer_queue.size() > 0:
+		customer_queue.pop_front()
+
+	customers_served_today += 1
+	active_customer = null
+
+	if customers_served_today >= customers_per_day:
+		set_status("Day over. Waiting for customers to leave...")
+	else:
+		game_state = GameState.CUSTOMER_WALKING
+		update_queue_positions()
+
+func _on_customer_patience_ran_out(customer: Node2D) -> void:
+	if customer != active_customer:
+		return
+
+	recipe_input_active = false
+	player_recipe_input.clear()
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "")
+
+	if service_panel:
+		service_panel.visible = false
+
+	set_status("Customer lost patience.")
+	set_result("No coin earned.")
+
+	game_state = GameState.CUSTOMER_LEAVING
+
+	if customer.has_method("leave_to"):
+		customer.call("leave_to", customer_exit_point.global_position)
+
+	advance_queue()
+
+func _on_customer_exited(_customer: Node2D) -> void:
+	await get_tree().process_frame
+
+	if customers_served_today >= customers_per_day and customer_container.get_child_count() == 0:
+		open_shop("night")
+
+func start_recipe_input_phase() -> void:
+	recipe_input_active = true
+	player_recipe_input.clear()
+
+	var combo_parts: Array = []
+	for key in current_recipe_sequence:
+		combo_parts.append(recipe_display_map.get(key, str(key)))
+
+	var combo_text = " + ".join(combo_parts)
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "Recipe: " + combo_text)
+
+	set_status("Enter recipe for %s" % get_recipe_display_name(current_order))
+	set_result("Use recipe keys.")
+
+func handle_recipe_input() -> void:
+	if Input.is_action_just_pressed("recipe_a"):
+		register_recipe_input("A")
+
+	if Input.is_action_just_pressed("recipe_b"):
+		register_recipe_input("B")
+
+func register_recipe_input(value: String) -> void:
+	if not recipe_input_active:
+		return
+
+	player_recipe_input.append(value)
+
+	var current_index: int = player_recipe_input.size() - 1
+
+	if current_index >= current_recipe_sequence.size():
+		fail_recipe_input()
+		return
+
+	if player_recipe_input[current_index] != current_recipe_sequence[current_index]:
+		fail_recipe_input()
+		return
+
+	var display_parts: Array = []
+	for key in player_recipe_input:
+		display_parts.append(recipe_display_map.get(key, str(key)))
+
+	set_result("Recipe Input: %s" % " + ".join(display_parts))
+
+	if player_recipe_input.size() == current_recipe_sequence.size():
+		recipe_input_active = false
+
+		if food_cart and food_cart.has_method("set_recipe_hint"):
+			food_cart.call("set_recipe_hint", "")
+
+		set_status("Correct recipe! Now serve it.")
+		start_service_phase()
+
+func fail_recipe_input() -> void:
+	recipe_input_active = false
+	player_recipe_input.clear()
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "")
+
+	set_status("Wrong recipe.")
+	set_result("Customer left without paying.")
+
+	game_state = GameState.CUSTOMER_LEAVING
+
+	if active_customer and active_customer.has_method("leave_to"):
+		active_customer.call("leave_to", customer_exit_point.global_position)
+
+	advance_queue()
+
+func start_service_phase() -> void:
+	game_state = GameState.SERVING
+	timing_value = 0.0
+	timing_direction = 1.0
+
+	if active_customer and active_customer.has_method("stop_patience"):
+		active_customer.call("stop_patience")
+
+	if service_panel:
+		service_panel.visible = true
+
+	if order_label:
+		order_label.text = "Order: %s" % get_recipe_display_name(current_order)
+
+	if hint_label:
+		hint_label.text = "Press E near the center."
+
+	if timing_bar:
+		timing_bar.min_value = 0.0
+		timing_bar.max_value = 100.0
+		timing_bar.value = 0.0
+
+	set_status("Service phase: press E at the right moment.")
+	set_result("")
+
+func update_service_bar(delta: float) -> void:
+	timing_value += timing_direction * service_bar_speed * delta
+
+	if timing_value >= 100.0:
+		timing_value = 100.0
+		timing_direction = -1.0
+	elif timing_value <= 0.0:
+		timing_value = 0.0
+		timing_direction = 1.0
+
+	if timing_bar:
+		timing_bar.value = timing_value
+
+func finish_service_phase() -> void:
+	if service_panel:
+		service_panel.visible = false
+
+	var district_profile: Dictionary = RunManager.get_current_district_profile()
+	var district_coin_bonus: int = int(district_profile.get("serve_coin_bonus", 0))
+
+	var recipe_data: Dictionary = get_recipe_data(current_order)
+	var base_coin: int = int(recipe_data.get("base_coin", 1))
+	var base_appeal: int = int(recipe_data.get("base_appeal", 0))
+
+	var perfect_min: float = clamp(45.0 - RunManager.day_timing_bonus, 0.0, 100.0)
+	var perfect_max: float = clamp(55.0 + RunManager.day_timing_bonus, 0.0, 100.0)
+	var nice_min: float = clamp(30.0 - RunManager.day_timing_bonus, 0.0, 100.0)
+	var nice_max: float = clamp(70.0 + RunManager.day_timing_bonus, 0.0, 100.0)
+
+	var result_text: String = "Bad Serve"
+	var coin_gain: int = max(1, base_coin - 2) + RunManager.day_coin_bonus + district_coin_bonus
+	var appeal_gain: int = 0
+
+	if timing_value >= perfect_min and timing_value <= perfect_max:
+		result_text = "Perfect Serve"
+		coin_gain = base_coin + 2 + RunManager.day_coin_bonus + district_coin_bonus
+		appeal_gain = base_appeal + 1
+	elif timing_value >= nice_min and timing_value <= nice_max:
+		result_text = "Nice Serve"
+		coin_gain = base_coin + RunManager.day_coin_bonus + district_coin_bonus
+		appeal_gain = base_appeal
+
+	money += coin_gain
+	local_appeal += appeal_gain
+
+	game_state = GameState.CUSTOMER_LEAVING
+
+	if active_customer and active_customer.has_method("leave_to"):
+		active_customer.call("leave_to", customer_exit_point.global_position)
+
+	set_status("%s served. Next customer coming." % get_recipe_display_name(current_order))
+	set_result("%s | +%d coin | +%d appeal" % [result_text, coin_gain, appeal_gain])
+
+	update_ui()
+	advance_queue()
+
+func open_shop(mode: String) -> void:
+	shop_open = true
+	current_shop_mode = mode
+	game_state = GameState.SHOP
+	shop_bought_this_visit = [false, false, false]
+
+	var title_text := ""
+	var mode_text := ""
+	var upgrades: Array = get_shop_upgrade_texts(mode)
+
+	if mode == "night":
+		title_text = "NIGHT MARKET"
+		mode_text = "Prepare for tonight's defense"
+	else:
+		title_text = "DAY MARKET"
+		mode_text = "Prepare for tomorrow's service"
+
+	if hud and hud.has_method("show_shop_panel"):
+		hud.show_shop_panel(
+			title_text,
+			mode_text,
+			money,
+			upgrades[0],
+			upgrades[1],
+			upgrades[2]
+		)
+
+	update_shop_buttons()
+	set_status("Choose an upgrade or continue.")
+	set_result("")
+
+func close_shop() -> void:
+	shop_open = false
+	current_shop_mode = ""
+
+	if hud and hud.has_method("hide_shop_panel"):
+		hud.hide_shop_panel()
+
+func get_shop_upgrade_texts(mode: String) -> Array:
+	if mode == "night":
+		return [
+			"Reinforced Cart\n+5 Stand HP ($6)",
+			"Sharper Knife\n+1 Attack Damage ($7)",
+			"Emergency Training\n+1 Recover HP ($5)"
+		]
+
+	return [
+		"Better Ingredients\n+1 Coin per Serve ($5)",
+		"Customer Charm\n+20 Patience ($6)",
+		"Steady Hands\n+5 Timing Zone ($7)"
+	]
+
+func get_shop_upgrade_cost(mode: String, index: int) -> int:
+	if mode == "night":
+		match index:
+			0:
+				return 6
+			1:
+				return 7
+			2:
+				return 5
+			_:
+				return 999
+
+	match index:
+		0:
+			return 5
+		1:
+			return 6
+		2:
+			return 7
+		_:
+			return 999
+
+func get_shop_upgrade_name(mode: String, index: int) -> String:
+	if mode == "night":
+		match index:
+			0:
+				return "Reinforced Cart"
+			1:
+				return "Sharper Knife"
+			2:
+				return "Emergency Training"
+			_:
+				return "Unknown"
+
+	match index:
+		0:
+			return "Better Ingredients"
+		1:
+			return "Customer Charm"
+		2:
+			return "Steady Hands"
+		_:
+			return "Unknown"
+
+func update_shop_buttons() -> void:
+	if hud and hud.has_method("update_shop_money"):
+		hud.update_shop_money(money)
+
+	var cost_1 := get_shop_upgrade_cost(current_shop_mode, 0)
+	var cost_2 := get_shop_upgrade_cost(current_shop_mode, 1)
+	var cost_3 := get_shop_upgrade_cost(current_shop_mode, 2)
+
+	if shop_button_1:
+		shop_button_1.disabled = shop_bought_this_visit[0] or money < cost_1
+	if shop_button_2:
+		shop_button_2.disabled = shop_bought_this_visit[1] or money < cost_2
+	if shop_button_3:
+		shop_button_3.disabled = shop_bought_this_visit[2] or money < cost_3
+
+	if shop_continue_button:
+		shop_continue_button.disabled = false
+
+func buy_shop_upgrade(index: int) -> void:
+	if not shop_open:
+		return
+
+	if index < 0 or index > 2:
+		return
+
+	if shop_bought_this_visit[index]:
+		return
+
+	var cost := get_shop_upgrade_cost(current_shop_mode, index)
+	if money < cost:
+		set_result("Not enough money.")
+		return
+
+	money -= cost
+	apply_shop_upgrade(current_shop_mode, index)
+	shop_bought_this_visit[index] = true
+
+	update_shop_buttons()
+	update_ui()
+
+	set_result("Purchased: %s" % get_shop_upgrade_name(current_shop_mode, index))
+
+func apply_shop_upgrade(mode: String, index: int) -> void:
+	if mode == "night":
+		match index:
+			0:
+				RunManager.night_stand_hp_bonus += 5
+			1:
+				RunManager.night_player_damage_bonus += 1
+			2:
+				RunManager.night_recover_health_bonus += 1
+		return
+
+	match index:
+		0:
+			RunManager.day_coin_bonus += 1
+		1:
+			RunManager.day_patience_bonus += 20.0
+		2:
+			RunManager.day_timing_bonus += 5.0
+
+func continue_after_shop() -> void:
+	var mode := current_shop_mode
+	close_shop()
+
+	if mode == "night":
+		start_night_phase()
+	else:
+		start_morning_phase()
+
+func _on_shop_upgrade_1_pressed() -> void:
+	buy_shop_upgrade(0)
+
+func _on_shop_upgrade_2_pressed() -> void:
+	buy_shop_upgrade(1)
+
+func _on_shop_upgrade_3_pressed() -> void:
+	buy_shop_upgrade(2)
+
+func _on_shop_continue_pressed() -> void:
+	continue_after_shop()
+
+func start_night_phase() -> void:
+	game_state = GameState.NIGHT
+	clear_enemies()
+
+	set_night_background()
+	apply_run_upgrades()
+
+	night_timer.stop()
+	enemy_spawn_timer.stop()
+
+	night_timer.wait_time = night_duration
+	enemy_spawn_timer.wait_time = enemy_spawn_interval
+
+	night_timer.start()
+	enemy_spawn_timer.start()
+
+	set_status("Night started! Protect the stand.")
+	set_result("Survive until dawn.")
+
+	if hud and hud.has_method("show_phase_night_started"):
+		hud.show_phase_night_started()
+
+func _on_enemy_spawn_timer_timeout() -> void:
+	if game_state != GameState.NIGHT:
+		return
+
+	if enemy_container.get_child_count() >= max_enemies_alive:
+		return
+
+	var enemy_instance = null
+
+	if tank_scene != null and randf() < 0.2:
+		enemy_instance = tank_scene.instantiate()
+		print("DİKKAT: TANK SPAWN OLDU!")
+	else:
+		if enemy_scene == null:
+			push_error("enemy_scene atanmamis.")
+			return
+		enemy_instance = enemy_scene.instantiate()
+
+	enemy_container.add_child(enemy_instance)
+
+	if randi() % 2 == 0:
+		enemy_instance.global_position = enemy_spawn_left.global_position
+	else:
+		enemy_instance.global_position = enemy_spawn_right.global_position
+
+	enemy_instance.stand_ref = food_cart
+	enemy_instance.player_ref = player
+
+func _on_night_timer_timeout() -> void:
+	if game_state != GameState.NIGHT:
+		return
+
+	if food_cart and food_cart.current_hp <= 0:
+		return
+
+	enemy_spawn_timer.stop()
+	clear_enemies()
+	game_state = GameState.NIGHT_WON
+
+	set_status("Night survived!")
+	set_result("You protected the stand.")
+
+	if hud and hud.has_method("show_phase_night_survived"):
+		hud.show_phase_night_survived()
+
+	var run_result := RunManager.register_night_won()
+
+	match run_result:
+		"next_day":
+			await get_tree().create_timer(1.5).timeout
+			open_shop("day")
+
+		"district_complete":
+			RunManager.prepare_current_district_reward_selection()
+			set_status("%s completed!" % RunManager.get_current_district_name())
+			set_result("Choose 1 district reward.")
+			await get_tree().create_timer(2.0).timeout
+			get_tree().change_scene_to_file(REWARD_SELECT_SCENE_PATH)
+
+		"all_complete":
+			RunManager.prepare_current_district_reward_selection()
+			set_status("Final district completed!")
+			set_result("Choose your final reward.")
+			await get_tree().create_timer(2.0).timeout
+			get_tree().change_scene_to_file(REWARD_SELECT_SCENE_PATH)
+
+func _on_food_cart_destroyed() -> void:
+	if game_state != GameState.NIGHT:
+		return
+
+	night_timer.stop()
+	enemy_spawn_timer.stop()
+	clear_enemies()
+	game_state = GameState.NIGHT_FAILED
+
+	set_status("Stand destroyed!")
+	set_result("Run reset. Returning to main menu.")
+
+	if hud and hud.has_method("show_game_over"):
+		hud.show_game_over()
+
+	RunManager.reset_run()
+
+	await get_tree().create_timer(2.0).timeout
+	get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
+
+func _on_player_down_started() -> void:
+	if game_state == GameState.NIGHT:
+		set_status("You are down! Enemies are attacking the stand.")
+
+		if hud and hud.has_method("show_player_down"):
+			hud.show_player_down()
+
+func _on_player_recovered() -> void:
+	if game_state == GameState.NIGHT:
+		set_status("You recovered. Defend the stand!")
+
+func _on_food_cart_hp_changed(current_hp: int, max_hp: int) -> void:
+	if stand_hp_label:
+		stand_hp_label.text = "Stand HP: %d / %d" % [current_hp, max_hp]
+
+func _on_player_health_changed(current_health: int, max_health: int) -> void:
+	if health_bar:
+		health_bar.max_value = max_health
+		health_bar.value = current_health
+
+func set_status(text_value: String) -> void:
+	if status_label:
+		status_label.text = text_value
+
+func set_result(text_value: String) -> void:
+	if result_label:
+		result_label.text = text_value
+
+func update_ui() -> void:
+	if coin_label:
+		coin_label.text = "%d" % money
+
+	if appeal_label:
+		appeal_label.text = "Appeal: %d" % local_appeal
+
+	if trash_label:
+		trash_label.text = "Trash Left: %d" % trash_container.get_child_count()
+
+	if stand_hp_label and food_cart:
+		stand_hp_label.text = "Stand HP: %d / %d" % [food_cart.current_hp, food_cart.max_hp]
+
+	if health_bar and player:
+		health_bar.max_value = player.max_health
+		health_bar.value = player.current_health
