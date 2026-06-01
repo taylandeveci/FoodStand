@@ -1,5 +1,7 @@
 extends Control
 
+@export var district_font: Font
+
 @onready var title_label: Label = $Panel/TitleLabel
 @onready var info_label: Label = $Panel/InfoLabel
 @onready var district_grid: GridContainer = $Panel/DistrictGrid
@@ -20,6 +22,8 @@ func build_district_buttons() -> void:
 	for i in range(RunManager.DISTRICT_COUNT):
 		var button: Button = Button.new()
 		button.custom_minimum_size = Vector2(360, 170)
+		button.add_theme_font_override("font", district_font)
+		button.add_theme_font_size_override("font_size", 20)
 
 		var district_name: String = str(RunManager.DISTRICT_NAMES[i])
 		var progress: int = int(RunManager.get_day_progress_for(i))
