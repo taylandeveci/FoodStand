@@ -27,6 +27,10 @@ window/size/mode=3
 window/size/initial_position_type=0
 window/stretch/mode="canvas_items"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/copilot-advanced/plugin.cfg")
+
 [input]
 
 move_left={
