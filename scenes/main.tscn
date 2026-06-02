@@ -23,7 +23,7 @@
 [ext_resource type="Texture2D" uid="uid://hs52rneyqdk3" path="res://assets/character/char_main_idle_.png" id="16_y6deb"]
 [ext_resource type="Texture2D" uid="uid://d3jfavutfwnfh" path="res://assets/character/char_main_jump.png" id="17_og1vs"]
 [ext_resource type="Texture2D" uid="uid://b0iu7ygb2alci" path="res://assets/character/char_main_run4.png" id="18_2wyq8"]
-[ext_resource type="FontFile" uid="uid://d5vrfcakc278" path="res://assets/ThaleahFat.ttf" id="30_5q0nq"]
+[ext_resource type="FontFile" uid="uid://d5vrfcakc278" path="res://Fonts/ThaleahFat.ttf" id="30_5q0nq"]
 [ext_resource type="Script" uid="uid://dfiloq4ggsxhv" path="res://scripts/hud.gd" id="30_dgi5k"]
 [ext_resource type="Texture2D" uid="uid://ck8165v11mgck" path="res://assets/tileset/Decoration 32x32.png" id="32_qkpxi"]
 

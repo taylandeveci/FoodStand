@@ -1,5 +1,7 @@
 extends Control
 
+@export var reward_font: Font
+
 @onready var title_label: Label = $Panel/TitleLabel
 @onready var info_label: Label = $Panel/InfoLabel
 @onready var reward_button_1: Button = $Panel/RewardList/RewardButton1
@@ -36,6 +38,9 @@ func setup_button(button: Button, index: int) -> void:
 
 	button.text = option_title + "\n" + option_description
 	button.disabled = false
+	
+	button.add_theme_font_override("font", reward_font)
+	button.add_theme_font_size_override("font_size", 20)
 
 func choose_reward(index: int) -> void:
 	if index < 0 or index >= current_options.size():
