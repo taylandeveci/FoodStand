@@ -22,6 +22,9 @@ enum GameState {
 @export var customer_scene: PackedScene
 @export var enemy_scene: PackedScene
 @export var tank_scene: PackedScene
+@export var thief_scene: PackedScene
+@export var boss_scene: PackedScene
+@export var barricade_scene: PackedScene
 
 @export var min_trash_count: int = 1
 @export var max_trash_count: int = 3
@@ -31,11 +34,22 @@ enum GameState {
 @export var night_duration: float = 60.0
 @export var enemy_spawn_interval: float = 4.0
 @export var max_enemies_alive: int = 5
+@export var thief_spawn_chance: float = 0.20
+@export var tank_spawn_chance: float = 0.20
+@export var boss_spawn_side_left: bool = false
 
 @export var customers_per_day: int = 3
+
+# Survival item effects
+@export var medkit_heal_amount: int = 3
+@export var repair_kit_amount: int = 6
+@export var repair_use_distance: float = 110.0
+@export var barricade_place_distance: float = 120.0
+
 var customers_served_today: int = 0
 var customer_queue: Array[Node2D] = []
 var queue_spacing: float = 65.0
+var total_customers_today: int = 0
 
 var money: int = 0
 var local_appeal: int = 0
@@ -57,14 +71,21 @@ var recipe_input_active: bool = false
 # Shop system
 var shop_open: bool = false
 var current_shop_mode: String = ""
-var shop_bought_this_visit: Array[bool] = [false, false, false]
+var current_shop_section: String = "upgrade"
+var shop_upgrade_bought_this_visit: Array[bool] = [false, false, false, false]
+
+# Final night / boss
+var final_night_active: bool = false
+var boss_spawned_this_night: bool = false
+var boss_alive: bool = false
+var active_boss: Node2D = null
 
 # Base stats
 var base_food_cart_max_hp: int = 0
 var base_player_attack_damage: int = 0
 var base_player_recover_health: int = 0
 
-# İç mantık A/B, oyuncuya ekranda J/K gösterilecek
+# Recipe data
 var recipes := {
 	"BURGER": {
 		"display_name": "Burger",
@@ -75,7 +96,7 @@ var recipes := {
 	"HOTDOG": {
 		"display_name": "Hotdog",
 		"combo": ["A", "B"],
-		"base_coin": 3,
+		"base_coin": 4,
 		"base_appeal": 1
 	},
 	"TOAST": {
@@ -87,13 +108,13 @@ var recipes := {
 	"SOUP": {
 		"display_name": "Soup",
 		"combo": ["B", "B"],
-		"base_coin": 5,
+		"base_coin": 6,
 		"base_appeal": 2
 	},
 	"MEATBALL": {
 		"display_name": "Meatball",
 		"combo": ["A", "B", "A"],
-		"base_coin": 7,
+		"base_coin": 8,
 		"base_appeal": 3
 	}
 }
@@ -103,7 +124,6 @@ var recipe_display_map := {
 	"B": "K"
 }
 
-const DISTRICT_SELECT_SCENE_PATH := "res://scenes/district_select.tscn"
 const MAIN_MENU_SCENE_PATH := "res://scenes/main_menu.tscn"
 const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
 
@@ -128,6 +148,9 @@ const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
 @onready var night_timer: Timer = $NightTimer
 @onready var enemy_spawn_timer: Timer = $EnemySpawnTimer
 
+@onready var barricade_points: Node2D = $BarricadePoints
+@onready var barricade_container: Node2D = $BarricadeContainer
+
 @onready var coin_label: Label = get_node_or_null("HUD/HUDRoot/CoinLabel") as Label
 @onready var appeal_label: Label = get_node_or_null("HUD/HUDRoot/AppealLabel") as Label
 @onready var trash_label: Label = get_node_or_null("HUD/HUDRoot/TrashLabel") as Label
@@ -147,7 +170,9 @@ const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
 @onready var shop_button_1: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton1") as Button
 @onready var shop_button_2: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton2") as Button
 @onready var shop_button_3: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton3") as Button
+@onready var shop_button_4: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton4") as Button
 @onready var shop_continue_button: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/ContinueButton") as Button
+@onready var switch_market_button: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/SwitchMarketButton") as Button
 
 var mission_panel = null
 
@@ -195,8 +220,12 @@ func _ready() -> void:
 		shop_button_2.pressed.connect(_on_shop_upgrade_2_pressed)
 	if shop_button_3:
 		shop_button_3.pressed.connect(_on_shop_upgrade_3_pressed)
+	if shop_button_4:
+		shop_button_4.pressed.connect(_on_shop_upgrade_4_pressed)
 	if shop_continue_button:
 		shop_continue_button.pressed.connect(_on_shop_continue_pressed)
+	if switch_market_button:
+		switch_market_button.pressed.connect(_on_switch_market_pressed)
 
 	if service_panel:
 		service_panel.visible = false
@@ -226,8 +255,26 @@ func _process(delta: float) -> void:
 		reset_service_hold()
 		hide_service_prompt()
 
+	if game_state == GameState.CUSTOMER_WALKING:
+		try_activate_front_customer()
+
 	if recipe_input_active:
 		handle_recipe_input()
+
+	if game_state == GameState.NIGHT:
+		if Input.is_action_just_pressed("use_medkit"):
+			try_use_medkit()
+
+		if Input.is_action_just_pressed("use_repair_kit"):
+			try_use_repair_kit()
+
+		if Input.is_action_just_pressed("use_barricade"):
+			try_place_barricade()
+
+		update_barricade_prompt()
+	else:
+		if hud and hud.has_method("hide_barricade_prompt"):
+			hud.hide_barricade_prompt()
 
 func set_day_background() -> void:
 	if day_background:
@@ -240,6 +287,9 @@ func set_night_background() -> void:
 		day_background.visible = false
 	if night_background:
 		night_background.visible = true
+
+func is_final_night_today() -> bool:
+	return RunManager.get_current_day() >= RunManager.DAYS_PER_DISTRICT
 
 func get_recipe_data(recipe_name: String) -> Dictionary:
 	if recipes.has(recipe_name):
@@ -259,6 +309,163 @@ func get_recipe_display_name(recipe_name: String) -> String:
 	var recipe_data: Dictionary = get_recipe_data(recipe_name)
 	return str(recipe_data.get("display_name", recipe_name))
 
+func get_survival_inventory_text() -> String:
+	return "Medkit %d/%d | Repair %d/%d | Barricade %d/%d | Bag Lv.%d" % [
+		RunManager.get_survival_item_count("medkit"),
+		RunManager.get_survival_item_max_stack("medkit"),
+		RunManager.get_survival_item_count("repair_kit"),
+		RunManager.get_survival_item_max_stack("repair_kit"),
+		RunManager.get_survival_item_count("barricade"),
+		RunManager.get_survival_item_max_stack("barricade"),
+		RunManager.bag_upgrade_level
+	]
+
+func refresh_shop_inventory_text_if_needed() -> void:
+	if shop_open and hud and hud.has_method("update_shop_inventory"):
+		hud.update_shop_inventory(get_survival_inventory_text())
+
+func try_use_medkit() -> void:
+	if player == null:
+		return
+
+	if not RunManager.can_use_survival_item("medkit"):
+		set_status("No Medkit left.")
+		set_result("Buy Medkit from Survival Market.")
+		return
+
+	if player.current_health >= player.max_health:
+		set_status("HP is already full.")
+		set_result("Medkit not used.")
+		return
+
+	if player.has_method("heal"):
+		var healed: bool = player.heal(medkit_heal_amount)
+		if healed:
+			RunManager.use_survival_item("medkit", 1)
+			refresh_shop_inventory_text_if_needed()
+
+			set_status("Medkit used!")
+			set_result("+%d HP | Medkit left: %d" % [
+				medkit_heal_amount,
+				RunManager.get_survival_item_count("medkit")
+			])
+
+func try_use_repair_kit() -> void:
+	if player == null or food_cart == null:
+		return
+
+	if not RunManager.can_use_survival_item("repair_kit"):
+		set_status("No Repair Kit left.")
+		set_result("Buy Repair Kit from Survival Market.")
+		return
+
+	if food_cart.current_hp >= food_cart.max_hp:
+		set_status("Stand HP is already full.")
+		set_result("Repair Kit not used.")
+		return
+
+	var dist_to_cart: float = player.global_position.distance_to(food_cart.global_position)
+	if dist_to_cart > repair_use_distance:
+		set_status("Go near the stand.")
+		set_result("Repair Kit can only be used near the cart.")
+		return
+
+	if food_cart.has_method("repair"):
+		var repaired: bool = food_cart.repair(repair_kit_amount)
+		if repaired:
+			RunManager.use_survival_item("repair_kit", 1)
+			refresh_shop_inventory_text_if_needed()
+
+			set_status("Repair Kit used!")
+			set_result("+%d Stand HP | Repair left: %d" % [
+				repair_kit_amount,
+				RunManager.get_survival_item_count("repair_kit")
+			])
+
+func get_nearest_free_barricade_point() -> Marker2D:
+	if player == null or barricade_points == null:
+		return null
+
+	var nearest_point: Marker2D = null
+	var nearest_distance: float = barricade_place_distance
+
+	for child in barricade_points.get_children():
+		if not child is Marker2D:
+			continue
+
+		var point: Marker2D = child
+
+		if is_barricade_point_occupied(point):
+			continue
+
+		var dist: float = player.global_position.distance_to(point.global_position)
+		if dist <= nearest_distance:
+			nearest_distance = dist
+			nearest_point = point
+
+	return nearest_point
+
+func is_barricade_point_occupied(point: Marker2D) -> bool:
+	for child in barricade_container.get_children():
+		if child.global_position.distance_to(point.global_position) < 8.0:
+			return true
+	return false
+
+func try_place_barricade() -> void:
+	if barricade_scene == null:
+		set_status("Barricade scene missing.")
+		return
+
+	if not RunManager.can_use_survival_item("barricade"):
+		set_status("No Barricade left.")
+		set_result("Buy Barricade from Survival Market.")
+		return
+
+	var point: Marker2D = get_nearest_free_barricade_point()
+	if point == null:
+		set_status("No free barricade point nearby.")
+		set_result("Go near a barricade point.")
+		return
+
+	var barricade_instance = barricade_scene.instantiate()
+	barricade_container.add_child(barricade_instance)
+	barricade_instance.global_position = point.global_position
+
+	RunManager.use_survival_item("barricade", 1)
+	refresh_shop_inventory_text_if_needed()
+
+	set_status("Barricade placed!")
+	set_result("Barricade left: %d" % RunManager.get_survival_item_count("barricade"))
+
+	update_barricade_prompt()
+
+func update_barricade_prompt() -> void:
+	if hud == null or not hud.has_method("show_barricade_prompt") or not hud.has_method("hide_barricade_prompt"):
+		return
+
+	if game_state != GameState.NIGHT:
+		hud.hide_barricade_prompt()
+		return
+
+	if not RunManager.can_use_survival_item("barricade"):
+		hud.hide_barricade_prompt()
+		return
+
+	var point: Marker2D = get_nearest_free_barricade_point()
+	if point == null:
+		hud.hide_barricade_prompt()
+		return
+
+	hud.show_barricade_prompt("Press 3 to place Barricade")
+
+func can_switch_market() -> bool:
+	return current_shop_mode == "night"
+
+func get_switch_market_button_text() -> String:
+	if current_shop_section == "upgrade":
+		return "Go To Survival"
+	return "Go To Upgrades"
+
 func get_available_order_pool() -> Array:
 	var unlocked_recipes: Array = RunManager.get_unlocked_recipe_names()
 	var pool: Array = []
@@ -269,7 +476,6 @@ func get_available_order_pool() -> Array:
 		if recipes.has(recipe_name):
 			pool.append(recipe_name)
 
-			# Favori tarifler daha sık gelsin
 			if recipe_name in favored_recipes:
 				pool.append(recipe_name)
 				pool.append(recipe_name)
@@ -292,15 +498,28 @@ func apply_run_upgrades() -> void:
 
 func start_morning_phase() -> void:
 	game_state = GameState.CLEANING
+
 	current_order = ""
 	timing_value = 0.0
 	timing_direction = 1.0
+
 	recipe_input_active = false
 	player_recipe_input.clear()
 	current_recipe_sequence.clear()
+
 	customers_served_today = 0
+	total_customers_today = 0
+	active_customer = null
+
 	shop_open = false
 	current_shop_mode = ""
+	current_shop_section = "upgrade"
+	shop_upgrade_bought_this_visit = [false, false, false, false]
+
+	final_night_active = false
+	boss_spawned_this_night = false
+	boss_alive = false
+	active_boss = null
 
 	set_day_background()
 	apply_run_upgrades()
@@ -308,12 +527,19 @@ func start_morning_phase() -> void:
 	clear_old_trash()
 	clear_customer()
 	clear_enemies()
+	clear_barricades()
 
 	if hud and hud.has_method("hide_shop_panel"):
 		hud.hide_shop_panel()
 
 	if food_cart and food_cart.has_method("reset_hp"):
 		food_cart.reset_hp()
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "")
+
+	if hud and hud.has_method("hide_barricade_prompt"):
+		hud.hide_barricade_prompt()
 
 	night_timer.stop()
 	enemy_spawn_timer.stop()
@@ -354,15 +580,25 @@ func clear_enemies() -> void:
 	for child in enemy_container.get_children():
 		child.queue_free()
 
+	boss_alive = false
+	active_boss = null
+
+func clear_barricades() -> void:
+	for child in barricade_container.get_children():
+		child.queue_free()
+
 func spawn_random_trash() -> void:
 	if trash_scene == null:
 		push_error("trash_scene atanmamis. Main node'unda Trash.tscn bagla.")
 		return
 
-	var points: Array = trash_points.get_children()
+	var points: Array[Node] = []
+	for child in trash_points.get_children():
+		if child is Marker2D:
+			points.append(child)
 
 	if points.is_empty():
-		push_error("TrashPoints altinda hic spawn noktasi yok.")
+		push_error("TrashPoints altinda hic Marker2D spawn noktasi yok.")
 		return
 
 	points.shuffle()
@@ -376,7 +612,7 @@ func spawn_random_trash() -> void:
 	var spawn_count: int = randi_range(real_min, real_max)
 
 	for i in range(spawn_count):
-		var point = points[i]
+		var point: Marker2D = points[i] as Marker2D
 		if point == null:
 			continue
 
@@ -443,6 +679,7 @@ func spawn_customer_queue() -> void:
 	var district_profile: Dictionary = RunManager.get_current_district_profile()
 	var total_customers: int = customers_per_day + int(district_profile.get("customer_count_bonus", 0))
 	total_customers = max(total_customers, 1)
+	total_customers_today = total_customers
 
 	for i in range(total_customers):
 		var customer = customer_scene.instantiate()
@@ -477,24 +714,45 @@ func update_queue_positions() -> void:
 		if customer.has_method("set_target"):
 			customer.call("set_target", target_pos)
 
+func activate_front_customer(customer: Node2D) -> void:
+	active_customer = customer
+	game_state = GameState.CUSTOMER_WAITING
+
+	var order_pool: Array = get_available_order_pool()
+	current_order = order_pool[randi() % order_pool.size()]
+	current_recipe_sequence = get_recipe_combo(current_order)
+	player_recipe_input.clear()
+	recipe_input_active = false
+
+	if food_cart and food_cart.has_method("set_recipe_hint"):
+		food_cart.call("set_recipe_hint", "")
+
+	if customer.has_method("set_order_text"):
+		customer.call("set_order_text", get_recipe_display_name(current_order))
+	if customer.has_method("show_order"):
+		customer.call("show_order")
+
+	set_status("Customer ready. Hold to start cooking.")
+	set_result("Order: %s" % get_recipe_display_name(current_order))
+
+
+func try_activate_front_customer() -> void:
+	if active_customer != null:
+		return
+	if customer_queue.is_empty():
+		return
+
+	var front_customer: Node2D = customer_queue[0]
+	if front_customer == null or not is_instance_valid(front_customer):
+		return
+
+	var dist: float = front_customer.global_position.distance_to(customer_stop_point.global_position)
+	if dist <= 12.0:
+		activate_front_customer(front_customer)
+
 func _on_customer_arrived(customer: Node2D) -> void:
 	if customer_queue.size() > 0 and customer_queue[0] == customer:
-		active_customer = customer
-		game_state = GameState.CUSTOMER_WAITING
-
-		var order_pool: Array = get_available_order_pool()
-		current_order = order_pool[randi() % order_pool.size()]
-		current_recipe_sequence = get_recipe_combo(current_order)
-		player_recipe_input.clear()
-		recipe_input_active = false
-
-		if customer.has_method("set_order_text"):
-			customer.call("set_order_text", current_order)
-		if customer.has_method("show_order"):
-			customer.call("show_order")
-
-		set_status("Customer ready. Hold to start cooking.")
-		set_result("Order: %s" % current_order)
+		activate_front_customer(customer)
 	else:
 		if customer.has_method("stop_patience"):
 			customer.call_deferred("stop_patience")
@@ -508,7 +766,7 @@ func advance_queue() -> void:
 	customers_served_today += 1
 	active_customer = null
 
-	if customers_served_today >= customers_per_day:
+	if customers_served_today >= total_customers_today:
 		set_status("Day over. Waiting for customers to leave...")
 	else:
 		game_state = GameState.CUSTOMER_WALKING
@@ -540,7 +798,7 @@ func _on_customer_patience_ran_out(customer: Node2D) -> void:
 func _on_customer_exited(_customer: Node2D) -> void:
 	await get_tree().process_frame
 
-	if customers_served_today >= customers_per_day and customer_container.get_child_count() == 0:
+	if customers_served_today >= total_customers_today and customer_container.get_child_count() == 0:
 		open_shop("night")
 
 func start_recipe_input_phase() -> void:
@@ -674,7 +932,7 @@ func finish_service_phase(timing_snapshot: float = -1.0) -> void:
 	var serve_timing: float = timing_snapshot if timing_snapshot >= 0.0 else timing_value
 
 	var result_text: String = "Bad Serve"
-	var coin_gain: int = max(1, base_coin - 2) + RunManager.day_coin_bonus + district_coin_bonus
+	var coin_gain: int = max(1, int(round(base_coin * 0.7))) + RunManager.day_coin_bonus + district_coin_bonus
 	var appeal_gain: int = 0
 
 	if serve_timing >= perfect_min and serve_timing <= perfect_max:
@@ -754,79 +1012,198 @@ func hide_service_prompt() -> void:
 func open_shop(mode: String) -> void:
 	shop_open = true
 	current_shop_mode = mode
+	current_shop_section = "upgrade"
 	game_state = GameState.SHOP
-	shop_bought_this_visit = [false, false, false]
+	shop_upgrade_bought_this_visit = [false, false, false, false]
 
+	refresh_shop_ui()
+	set_status("Choose what to buy, then continue.")
+	set_result("")
+
+func refresh_shop_ui() -> void:
+	var item_texts: Array = get_shop_item_texts(current_shop_mode, current_shop_section)
 	var title_text := ""
 	var mode_text := ""
-	var upgrades: Array = get_shop_upgrade_texts(mode)
+	var market_type_text := ""
+	var inventory_text := get_survival_inventory_text()
 
-	if mode == "night":
+	if current_shop_mode == "night":
 		title_text = "NIGHT MARKET"
-		mode_text = "Prepare for tonight's defense"
+		mode_text = "Prepare for tonight"
 	else:
 		title_text = "DAY MARKET"
-		mode_text = "Prepare for tomorrow's service"
+		mode_text = "Prepare for tomorrow"
+
+	if current_shop_section == "upgrade":
+		market_type_text = "UPGRADES"
+	else:
+		market_type_text = "SURVIVAL"
 
 	if hud and hud.has_method("show_shop_panel"):
 		hud.show_shop_panel(
 			title_text,
 			mode_text,
 			money,
-			upgrades[0],
-			upgrades[1],
-			upgrades[2]
+			item_texts[0],
+			item_texts[1],
+			item_texts[2],
+			item_texts[3],
+			market_type_text,
+			inventory_text,
+			can_switch_market()
 		)
 
+	if hud and hud.has_method("update_switch_market_button_text"):
+		hud.update_switch_market_button_text(get_switch_market_button_text())
+
 	update_shop_buttons()
-	set_status("Choose an upgrade or continue.")
-	set_result("")
 
 func close_shop() -> void:
 	shop_open = false
 	current_shop_mode = ""
+	current_shop_section = "upgrade"
 
 	if hud and hud.has_method("hide_shop_panel"):
 		hud.hide_shop_panel()
 
-func get_shop_upgrade_texts(mode: String) -> Array:
-	if mode == "night":
+func get_shop_item_texts(mode: String, section: String) -> Array:
+	if mode == "day":
 		return [
-			"Reinforced Cart\n+5 Stand HP ($6)",
-			"Sharper Knife\n+1 Attack Damage ($7)",
-			"Emergency Training\n+1 Recover HP ($5)"
+			"Better Ingredients\n+1 Coin per Serve ($6)",
+			"Customer Charm\n+20 Patience ($7)",
+			"Steady Hands\n+5 Timing Zone ($7)",
+			""
 		]
 
-	return [
-		"Better Ingredients\n+1 Coin per Serve ($5)",
-		"Customer Charm\n+20 Patience ($6)",
-		"Steady Hands\n+5 Timing Zone ($7)"
-	]
+	if mode == "night" and section == "upgrade":
+		var bag_text := ""
+		if RunManager.can_upgrade_bag():
+			bag_text = "Bag Upgrade\nIncrease item stacks ($%d)" % RunManager.get_bag_upgrade_cost()
+		else:
+			bag_text = "Bag Upgrade\nMAX LEVEL"
 
-func get_shop_upgrade_cost(mode: String, index: int) -> int:
-	if mode == "night":
+		return [
+			"Reinforced Cart\n+5 Stand HP ($7)",
+			"Sharper Knife\n+1 Attack Damage ($8)",
+			"Emergency Training\n+1 Recover HP ($6)",
+			bag_text
+		]
+
+	if mode == "night" and section == "survival":
+		return [
+			"Medkit\n+1 Stack ($5)",
+			"Repair Kit\n+1 Stack ($6)",
+			"Barricade\n+1 Stack ($8)",
+			""
+		]
+
+	return ["", "", "", ""]
+
+func get_shop_item_cost(mode: String, section: String, index: int) -> int:
+	if mode == "day":
 		match index:
 			0:
 				return 6
 			1:
 				return 7
 			2:
-				return 5
+				return 7
 			_:
 				return 999
 
-	match index:
-		0:
-			return 5
-		1:
-			return 6
-		2:
-			return 7
-		_:
-			return 999
+	if mode == "night" and section == "upgrade":
+		match index:
+			0:
+				return 7
+			1:
+				return 8
+			2:
+				return 6
+			3:
+				return RunManager.get_bag_upgrade_cost()
+			_:
+				return 999
 
-func get_shop_upgrade_name(mode: String, index: int) -> String:
-	if mode == "night":
+	if mode == "night" and section == "survival":
+		match index:
+			0:
+				return 5
+			1:
+				return 6
+			2:
+				return 8
+			_:
+				return 999
+
+	return 999
+
+func can_buy_shop_item(mode: String, section: String, index: int) -> bool:
+	if mode == "night" and section == "upgrade":
+		match index:
+			3:
+				return RunManager.can_upgrade_bag()
+			_:
+				return true
+
+	if mode == "night" and section == "survival":
+		match index:
+			0:
+				return not RunManager.is_survival_item_full("medkit")
+			1:
+				return not RunManager.is_survival_item_full("repair_kit")
+			2:
+				return not RunManager.is_survival_item_full("barricade")
+			_:
+				return false
+
+	return true
+
+func apply_shop_item(mode: String, section: String, index: int) -> void:
+	if mode == "day":
+		match index:
+			0:
+				RunManager.day_coin_bonus += 1
+			1:
+				RunManager.day_patience_bonus += 20.0
+			2:
+				RunManager.day_timing_bonus += 5.0
+		return
+
+	if mode == "night" and section == "upgrade":
+		match index:
+			0:
+				RunManager.night_stand_hp_bonus += 5
+				apply_run_upgrades()
+			1:
+				RunManager.night_player_damage_bonus += 1
+			2:
+				RunManager.night_recover_health_bonus += 1
+			3:
+				RunManager.upgrade_bag()
+		return
+
+	if mode == "night" and section == "survival":
+		match index:
+			0:
+				RunManager.add_survival_item("medkit", 1)
+			1:
+				RunManager.add_survival_item("repair_kit", 1)
+			2:
+				RunManager.add_survival_item("barricade", 1)
+
+func get_shop_item_name(mode: String, section: String, index: int) -> String:
+	if mode == "day":
+		match index:
+			0:
+				return "Better Ingredients"
+			1:
+				return "Customer Charm"
+			2:
+				return "Steady Hands"
+			_:
+				return "Unknown"
+
+	if mode == "night" and section == "upgrade":
 		match index:
 			0:
 				return "Reinforced Cart"
@@ -834,79 +1211,84 @@ func get_shop_upgrade_name(mode: String, index: int) -> String:
 				return "Sharper Knife"
 			2:
 				return "Emergency Training"
+			3:
+				return "Bag Upgrade"
 			_:
 				return "Unknown"
 
-	match index:
-		0:
-			return "Better Ingredients"
-		1:
-			return "Customer Charm"
-		2:
-			return "Steady Hands"
-		_:
-			return "Unknown"
+	if mode == "night" and section == "survival":
+		match index:
+			0:
+				return "Medkit"
+			1:
+				return "Repair Kit"
+			2:
+				return "Barricade"
+			_:
+				return "Unknown"
+
+	return "Unknown"
 
 func update_shop_buttons() -> void:
 	if hud and hud.has_method("update_shop_money"):
 		hud.update_shop_money(money)
 
-	var cost_1 := get_shop_upgrade_cost(current_shop_mode, 0)
-	var cost_2 := get_shop_upgrade_cost(current_shop_mode, 1)
-	var cost_3 := get_shop_upgrade_cost(current_shop_mode, 2)
+	if hud and hud.has_method("update_shop_inventory"):
+		hud.update_shop_inventory(get_survival_inventory_text())
 
-	if shop_button_1:
-		shop_button_1.disabled = shop_bought_this_visit[0] or money < cost_1
-	if shop_button_2:
-		shop_button_2.disabled = shop_bought_this_visit[1] or money < cost_2
-	if shop_button_3:
-		shop_button_3.disabled = shop_bought_this_visit[2] or money < cost_3
+	for i in range(4):
+		var button: Button = null
+		match i:
+			0:
+				button = shop_button_1
+			1:
+				button = shop_button_2
+			2:
+				button = shop_button_3
+			3:
+				button = shop_button_4
+
+		if button == null or not button.visible:
+			continue
+
+		var cost := get_shop_item_cost(current_shop_mode, current_shop_section, i)
+		var can_buy := can_buy_shop_item(current_shop_mode, current_shop_section, i)
+
+		if current_shop_section == "upgrade":
+			button.disabled = shop_upgrade_bought_this_visit[i] or money < cost or not can_buy
+		else:
+			button.disabled = money < cost or not can_buy
 
 	if shop_continue_button:
 		shop_continue_button.disabled = false
 
-func buy_shop_upgrade(index: int) -> void:
+func buy_shop_item(index: int) -> void:
 	if not shop_open:
 		return
 
-	if index < 0 or index > 2:
-		return
-
-	if shop_bought_this_visit[index]:
-		return
-
-	var cost := get_shop_upgrade_cost(current_shop_mode, index)
+	var cost := get_shop_item_cost(current_shop_mode, current_shop_section, index)
 	if money < cost:
 		set_result("Not enough money.")
 		return
 
-	money -= cost
-	apply_shop_upgrade(current_shop_mode, index)
-	shop_bought_this_visit[index] = true
+	if current_shop_section == "upgrade":
+		if shop_upgrade_bought_this_visit[index]:
+			return
 
-	update_shop_buttons()
-	update_ui()
-
-	set_result("Purchased: %s" % get_shop_upgrade_name(current_shop_mode, index))
-
-func apply_shop_upgrade(mode: String, index: int) -> void:
-	if mode == "night":
-		match index:
-			0:
-				RunManager.night_stand_hp_bonus += 5
-			1:
-				RunManager.night_player_damage_bonus += 1
-			2:
-				RunManager.night_recover_health_bonus += 1
+	if not can_buy_shop_item(current_shop_mode, current_shop_section, index):
+		set_result("Cannot buy this item right now.")
 		return
 
-	match index:
-		0:
-			RunManager.day_coin_bonus += 1
-		1:
-			RunManager.day_patience_bonus += 20.0
-		2:
-			RunManager.day_timing_bonus += 5.0
+	money -= cost
+	apply_shop_item(current_shop_mode, current_shop_section, index)
+
+	if current_shop_section == "upgrade":
+		shop_upgrade_bought_this_visit[index] = true
+
+	refresh_shop_ui()
+	update_ui()
+
+	set_result("Purchased: %s" % get_shop_item_name(current_shop_mode, current_shop_section, index))
 
 func continue_after_shop() -> void:
 	var mode := current_shop_mode
@@ -918,13 +1300,27 @@ func continue_after_shop() -> void:
 		start_morning_phase()
 
 func _on_shop_upgrade_1_pressed() -> void:
-	buy_shop_upgrade(0)
+	buy_shop_item(0)
 
 func _on_shop_upgrade_2_pressed() -> void:
-	buy_shop_upgrade(1)
+	buy_shop_item(1)
 
 func _on_shop_upgrade_3_pressed() -> void:
-	buy_shop_upgrade(2)
+	buy_shop_item(2)
+
+func _on_shop_upgrade_4_pressed() -> void:
+	buy_shop_item(3)
+
+func _on_switch_market_pressed() -> void:
+	if not can_switch_market():
+		return
+
+	if current_shop_section == "upgrade":
+		current_shop_section = "survival"
+	else:
+		current_shop_section = "upgrade"
+
+	refresh_shop_ui()
 
 func _on_shop_continue_pressed() -> void:
 	continue_after_shop()
@@ -936,6 +1332,11 @@ func start_night_phase() -> void:
 	set_night_background()
 	apply_run_upgrades()
 
+	final_night_active = is_final_night_today()
+	boss_spawned_this_night = false
+	boss_alive = false
+	active_boss = null
+
 	night_timer.stop()
 	enemy_spawn_timer.stop()
 
@@ -946,7 +1347,10 @@ func start_night_phase() -> void:
 	enemy_spawn_timer.start()
 
 	clear_status()
-	set_result("Survive until dawn.")
+	if final_night_active:
+		set_result("Day 7 Boss Night")
+	else:
+		set_result("Survive until dawn.")
 
 	if hud and hud.has_method("show_phase_night_started"):
 		position_phase_animation_above_food_cart()
@@ -989,10 +1393,12 @@ func _on_enemy_spawn_timer_timeout() -> void:
 		return
 
 	var enemy_instance = null
+	var roll: float = randf()
 
-	if tank_scene != null and randf() < 0.2:
+	if thief_scene != null and roll < thief_spawn_chance:
+		enemy_instance = thief_scene.instantiate()
+	elif tank_scene != null and roll < thief_spawn_chance + tank_spawn_chance:
 		enemy_instance = tank_scene.instantiate()
-		print("DİKKAT: TANK SPAWN OLDU!")
 	else:
 		if enemy_scene == null:
 			push_error("enemy_scene atanmamis.")
@@ -1001,13 +1407,59 @@ func _on_enemy_spawn_timer_timeout() -> void:
 
 	enemy_container.add_child(enemy_instance)
 
-	if randi() % 2 == 0:
+	var spawned_left: bool = randi() % 2 == 0
+
+	if spawned_left:
 		enemy_instance.global_position = enemy_spawn_left.global_position
 	else:
 		enemy_instance.global_position = enemy_spawn_right.global_position
 
 	enemy_instance.stand_ref = food_cart
 	enemy_instance.player_ref = player
+
+	if enemy_instance.has_signal("died"):
+		enemy_instance.died.connect(_on_enemy_died.bind(enemy_instance))
+
+	if enemy_instance.has_signal("escaped_with_money"):
+		enemy_instance.escaped_with_money.connect(_on_thief_escaped_with_money)
+
+func spawn_boss_enemy() -> void:
+	if boss_scene == null:
+		push_error("boss_scene atanmamis.")
+		return
+
+	if boss_alive:
+		return
+
+	var boss_instance = boss_scene.instantiate()
+	enemy_container.add_child(boss_instance)
+
+	if boss_spawn_side_left:
+		boss_instance.global_position = enemy_spawn_left.global_position
+	else:
+		boss_instance.global_position = enemy_spawn_right.global_position
+
+	boss_instance.stand_ref = food_cart
+	boss_instance.player_ref = player
+
+	if boss_instance.has_signal("died"):
+		boss_instance.died.connect(_on_boss_died)
+		boss_instance.died.connect(_on_enemy_died.bind(boss_instance))
+
+	active_boss = boss_instance
+	boss_alive = true
+	boss_spawned_this_night = true
+
+	set_status("Boss arrived!")
+	set_result("Defeat the Boss to survive the final night.")
+
+func _on_thief_escaped_with_money(amount: int) -> void:
+	var stolen_amount: int = min(amount, money)
+	money -= stolen_amount
+	update_ui()
+
+	set_status("A thief escaped!")
+	set_result("Thief stole %d coin!" % stolen_amount)
 
 func _on_night_timer_timeout() -> void:
 	if game_state != GameState.NIGHT:
@@ -1017,11 +1469,57 @@ func _on_night_timer_timeout() -> void:
 		return
 
 	enemy_spawn_timer.stop()
+
+	if final_night_active and not boss_spawned_this_night:
+		clear_enemies()
+		spawn_boss_enemy()
+		return
+
+	if boss_alive:
+		return
+
 	clear_enemies()
 	game_state = GameState.NIGHT_WON
 
 	set_status("Night survived!")
 	set_result("You protected the stand.")
+
+	if hud and hud.has_method("show_phase_night_survived"):
+		hud.show_phase_night_survived()
+
+	var run_result := RunManager.register_night_won()
+
+	match run_result:
+		"next_day":
+			await get_tree().create_timer(1.5).timeout
+			open_shop("day")
+
+		"district_complete":
+			RunManager.prepare_current_district_reward_selection()
+			set_status("%s completed!" % RunManager.get_current_district_name())
+			set_result("Choose 1 district reward.")
+			await get_tree().create_timer(2.0).timeout
+			get_tree().change_scene_to_file(REWARD_SELECT_SCENE_PATH)
+
+		"all_complete":
+			RunManager.prepare_current_district_reward_selection()
+			set_status("Final district completed!")
+			set_result("Choose your final reward.")
+			await get_tree().create_timer(2.0).timeout
+			get_tree().change_scene_to_file(REWARD_SELECT_SCENE_PATH)
+
+func _on_boss_died() -> void:
+	boss_alive = false
+	active_boss = null
+
+	if game_state != GameState.NIGHT:
+		return
+
+	clear_enemies()
+	game_state = GameState.NIGHT_WON
+
+	set_status("Boss defeated! Night survived!")
+	set_result("You defeated the Boss.")
 
 	if hud and hud.has_method("show_phase_night_survived"):
 		hud.show_phase_night_survived()
@@ -1054,6 +1552,7 @@ func _on_food_cart_destroyed() -> void:
 	night_timer.stop()
 	enemy_spawn_timer.stop()
 	clear_enemies()
+	clear_barricades()
 	game_state = GameState.NIGHT_FAILED
 
 	set_status("Stand destroyed!")
@@ -1093,6 +1592,48 @@ func set_status(text_value: String) -> void:
 
 func clear_status() -> void:
 	set_status("")
+
+func add_money(amount: int) -> void:
+	if amount <= 0:
+		return
+
+	money += amount
+	update_ui()
+
+func lose_money(amount: int) -> void:
+	if amount <= 0:
+		return
+
+	var lost: int = min(amount, money)
+	money -= lost
+	update_ui()
+
+	set_status("A thief stole your money!")
+	set_result("-%d coin" % lost)
+
+func _on_enemy_died(enemy: Node2D) -> void:
+	if enemy == null:
+		return
+
+	var reward: int = 0
+	var recovered: int = 0
+
+	if enemy.has_method("get_kill_reward"):
+		reward += int(enemy.call("get_kill_reward"))
+
+	if enemy.has_method("did_steal_money") and bool(enemy.call("did_steal_money")):
+		if enemy.has_method("get_stolen_amount"):
+			recovered = int(enemy.call("get_stolen_amount"))
+			reward += recovered
+
+	if reward > 0:
+		add_money(reward)
+
+		if recovered > 0:
+			set_status("Thief defeated!")
+			set_result("+%d coin (%d recovered)" % [reward, recovered])
+		else:
+			set_result("+%d coin" % reward)
 
 func set_result(text_value: String) -> void:
 	if result_label:
@@ -1134,3 +1675,10 @@ func update_ui() -> void:
 	if health_bar and player:
 		health_bar.max_value = player.max_health
 		health_bar.value = player.current_health
+
+	if hud and hud.has_method("update_survival_inventory"):
+		hud.update_survival_inventory(
+			RunManager.get_survival_item_count("medkit"),
+			RunManager.get_survival_item_count("repair_kit"),
+			RunManager.get_survival_item_count("barricade")
+		)

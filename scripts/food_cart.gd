@@ -100,6 +100,17 @@ func take_damage(amount: int) -> void:
 		destroyed.emit()
 		print("TEZGAH YIKILDI! GAME OVER!")
 
+func repair(amount: int) -> bool:
+	if current_hp <= 0:
+		return false
+
+	if current_hp >= max_hp:
+		return false
+
+	current_hp = min(current_hp + amount, max_hp)
+	hp_changed.emit(current_hp, max_hp)
+	return true
+
 func reset_hp() -> void:
 	current_hp = max_hp
 	hp_changed.emit(current_hp, max_hp)

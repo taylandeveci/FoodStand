@@ -62,6 +62,44 @@ const ALL_RECIPE_NAMES: Array[String] = [
 	"MEATBALL"
 ]
 
+# -------------------------
+# SURVIVAL INVENTORY SYSTEM
+# -------------------------
+
+const SURVIVAL_ITEM_KEYS: Array[String] = [
+	"medkit",
+	"repair_kit",
+	"barricade"
+]
+
+const BAG_UPGRADE_MAX_LEVEL: int = 2
+
+const BASE_SURVIVAL_STACKS := {
+	"medkit": 2,
+	"repair_kit": 2,
+	"barricade": 1
+}
+
+const BAG_LEVEL_1_BONUS := {
+	"medkit": 1,
+	"repair_kit": 1,
+	"barricade": 1
+}
+
+const BAG_LEVEL_2_BONUS := {
+	"medkit": 2,
+	"repair_kit": 2,
+	"barricade": 2
+}
+
+var survival_inventory := {
+	"medkit": 0,
+	"repair_kit": 0,
+	"barricade": 0
+}
+
+var bag_upgrade_level: int = 0
+
 var unlocked_district_count: int = 1
 var current_district: int = 0
 var district_day_progress: Array[int] = [0, 0, 0, 0, 0]
@@ -106,6 +144,107 @@ func reset_run() -> void:
 
 	pending_reward_district_index = -1
 	pending_reward_options.clear()
+
+	reset_survival_inventory()
+
+func reset_survival_inventory() -> void:
+	survival_inventory = {
+		"medkit": 0,
+		"repair_kit": 0,
+		"barricade": 0
+	}
+	bag_upgrade_level = 0
+
+func is_valid_survival_item(item_key: String) -> bool:
+	return item_key in SURVIVAL_ITEM_KEYS
+
+func get_survival_item_count(item_key: String) -> int:
+	if not is_valid_survival_item(item_key):
+		return 0
+	return int(survival_inventory.get(item_key, 0))
+
+func get_survival_item_max_stack(item_key: String) -> int:
+	if not is_valid_survival_item(item_key):
+		return 0
+
+	var base_stack: int = int(BASE_SURVIVAL_STACKS.get(item_key, 0))
+	var bonus_stack: int = 0
+
+	match bag_upgrade_level:
+		0:
+			bonus_stack = 0
+		1:
+			bonus_stack = int(BAG_LEVEL_1_BONUS.get(item_key, 0))
+		2:
+			bonus_stack = int(BAG_LEVEL_2_BONUS.get(item_key, 0))
+		_:
+			bonus_stack = int(BAG_LEVEL_2_BONUS.get(item_key, 0))
+
+	return base_stack + bonus_stack
+
+func is_survival_item_full(item_key: String) -> bool:
+	return get_survival_item_count(item_key) >= get_survival_item_max_stack(item_key)
+
+func can_add_survival_item(item_key: String, amount: int = 1) -> bool:
+	if not is_valid_survival_item(item_key):
+		return false
+
+	if amount <= 0:
+		return false
+
+	return get_survival_item_count(item_key) + amount <= get_survival_item_max_stack(item_key)
+
+func add_survival_item(item_key: String, amount: int = 1) -> bool:
+	if not can_add_survival_item(item_key, amount):
+		return false
+
+	survival_inventory[item_key] = get_survival_item_count(item_key) + amount
+	return true
+
+func can_use_survival_item(item_key: String, amount: int = 1) -> bool:
+	if not is_valid_survival_item(item_key):
+		return false
+
+	if amount <= 0:
+		return false
+
+	return get_survival_item_count(item_key) >= amount
+
+func use_survival_item(item_key: String, amount: int = 1) -> bool:
+	if not can_use_survival_item(item_key, amount):
+		return false
+
+	survival_inventory[item_key] = get_survival_item_count(item_key) - amount
+	return true
+
+func get_all_survival_counts() -> Dictionary:
+	return survival_inventory.duplicate(true)
+
+func get_all_survival_max_stacks() -> Dictionary:
+	return {
+		"medkit": get_survival_item_max_stack("medkit"),
+		"repair_kit": get_survival_item_max_stack("repair_kit"),
+		"barricade": get_survival_item_max_stack("barricade")
+	}
+
+func can_upgrade_bag() -> bool:
+	return bag_upgrade_level < BAG_UPGRADE_MAX_LEVEL
+
+func get_bag_upgrade_cost() -> int:
+	match bag_upgrade_level:
+		0:
+			return 12
+		1:
+			return 18
+		_:
+			return 999
+
+func upgrade_bag() -> bool:
+	if not can_upgrade_bag():
+		return false
+
+	bag_upgrade_level += 1
+	return true
 
 func is_district_unlocked(index: int) -> bool:
 	return index >= 0 and index < unlocked_district_count

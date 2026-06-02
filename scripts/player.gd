@@ -3,6 +3,8 @@ extends CharacterBody2D
 signal health_changed(current_health: int, max_health: int)
 signal down_started
 signal recovered
+signal dash_used(cooldown: float)
+signal skill_used(cooldown: float)
 
 @export var speed: float = 200.0
 @export var jump_velocity: float = -350.0
@@ -11,6 +13,17 @@ signal recovered
 @export var down_duration: float = 5.0
 @export var recover_health: int = 3
 @export var hurt_duration: float = 0.25
+
+# Dash
+@export var dash_speed: float = 520.0
+@export var dash_duration: float = 0.18
+@export var dash_cooldown: float = 2.0
+@export var dash_invulnerable: bool = true
+
+# Skill 1 - Hot Water Splash
+@export var skill_1_damage: int = 2
+@export var skill_1_range: float = 120.0
+@export var skill_1_cooldown: float = 5.0
 
 # Kamera sınırları
 @export var camera_min_x: float = 0.0
@@ -23,7 +36,12 @@ var facing: int = 1
 var is_attacking: bool = false
 var is_down: bool = false
 var is_hurt: bool = false
+var is_dashing: bool = false
 var current_health: int = 0
+
+var dash_time_left: float = 0.0
+var dash_cooldown_left: float = 0.0
+var skill_1_cooldown_left: float = 0.0
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var attack_area: Area2D = $AttackArea
@@ -52,7 +70,6 @@ func _ready() -> void:
 	hurt_timer.wait_time = hurt_duration
 	hurt_timer.timeout.connect(_on_hurt_timer_timeout)
 
-	# Kamera ayarı
 	camera.enabled = true
 	camera.top_level = true
 	camera.position_smoothing_enabled = false
@@ -60,8 +77,10 @@ func _ready() -> void:
 
 	health_changed.emit(current_health, max_health)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	update_camera_position()
+	update_cooldowns(delta)
+	update_dash_state(delta)
 
 func update_camera_position() -> void:
 	var viewport_size: Vector2 = get_viewport_rect().size
@@ -72,8 +91,25 @@ func update_camera_position() -> void:
 
 	camera.global_position = Vector2(target_x, target_y)
 
+func update_cooldowns(delta: float) -> void:
+	if dash_cooldown_left > 0.0:
+		dash_cooldown_left = max(dash_cooldown_left - delta, 0.0)
+
+	if skill_1_cooldown_left > 0.0:
+		skill_1_cooldown_left = max(skill_1_cooldown_left - delta, 0.0)
+
+func update_dash_state(delta: float) -> void:
+	if not is_dashing:
+		return
+
+	dash_time_left -= delta
+	if dash_time_left <= 0.0:
+		is_dashing = false
+		velocity.x = 0.0
+		modulate.a = 1.0
+
 func _physics_process(delta: float) -> void:
-	if not is_on_floor():
+	if not is_on_floor() and not is_dashing:
 		velocity.y += gravity * delta
 
 	if is_down:
@@ -86,6 +122,11 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 		move_and_slide()
 		play_hurt()
+		return
+
+	if is_dashing:
+		move_and_slide()
+		play_dash()
 		return
 
 	var direction: float = Input.get_axis("move_left", "move_right")
@@ -105,14 +146,82 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("jump") and is_on_floor() and not is_attacking:
 		velocity.y = jump_velocity
 
+	if Input.is_action_just_pressed("dash"):
+		try_dash(direction)
+
+	if Input.is_action_just_pressed("skill_1"):
+		use_skill_1()
+
 	if Input.is_action_just_pressed("attack") and not is_attacking:
 		start_attack()
 
 	move_and_slide()
 	update_animation(direction)
 
+func try_dash(direction: float) -> void:
+	if is_down or is_hurt or is_attacking or is_dashing:
+		return
+
+	if dash_cooldown_left > 0.0:
+		return
+
+	var dash_direction: int = facing
+	if direction < 0.0:
+		dash_direction = -1
+	elif direction > 0.0:
+		dash_direction = 1
+
+	facing = dash_direction
+	sprite.flip_h = facing < 0
+
+	is_dashing = true
+	dash_time_left = dash_duration
+	dash_cooldown_left = dash_cooldown
+	velocity.y = 0.0
+	velocity.x = dash_speed * facing
+	modulate.a = 0.65
+
+	dash_used.emit(dash_cooldown)
+
+func use_skill_1() -> void:
+	if is_down or is_hurt or is_dashing:
+		return
+
+	if skill_1_cooldown_left > 0.0:
+		return
+
+	skill_1_cooldown_left = skill_1_cooldown
+	skill_used.emit(skill_1_cooldown)
+
+	play_skill()
+	apply_hot_water_splash()
+
+func apply_hot_water_splash() -> void:
+	var enemies = get_tree().get_nodes_in_group("enemy")
+
+	for enemy in enemies:
+		if not enemy.has_method("take_damage"):
+			continue
+
+		if not enemy is Node2D:
+			continue
+
+		var enemy_node: Node2D = enemy
+		var dx: float = enemy_node.global_position.x - global_position.x
+		var dist: float = global_position.distance_to(enemy_node.global_position)
+
+		if dist > skill_1_range:
+			continue
+
+		if facing == 1 and dx < -12.0:
+			continue
+		if facing == -1 and dx > 12.0:
+			continue
+
+		enemy_node.take_damage(skill_1_damage)
+
 func start_attack() -> void:
-	if is_down or is_hurt:
+	if is_down or is_hurt or is_dashing:
 		return
 
 	is_attacking = true
@@ -126,33 +235,22 @@ func start_attack() -> void:
 	attack_timer.start(0.2)
 
 func hit_nearest_enemy() -> void:
-	# Sahnede "enemy" grubunda olan tüm düşmanları bir listeye alıyoruz
 	var enemies = get_tree().get_nodes_in_group("enemy")
 	var nearest_enemy: Node2D = null
-	
-	# Saldırı menzili (Eğer kılıcın kısa/uzun gelirse bu sayıyı artırıp azaltabilirsin)
-	var nearest_distance: float = 65.0 
+	var nearest_distance: float = 65.0
 
 	for enemy in enemies:
 		if enemy.has_method("take_damage"):
-			# Düşmanla aramızdaki mesafeyi hesaplıyoruz
 			var dist: float = global_position.distance_to(enemy.global_position)
-			
-			# Düşmanın sağımızda mı solumuzda mı olduğunu buluyoruz
 			var direction_to_enemy = sign(enemy.global_position.x - global_position.x)
-			
-			# Eğer düşman baktığımız yöndeyse (facing) VEYA çok dibimizdeyse (15 piksel)
+
 			if direction_to_enemy == facing or dist < 15.0:
 				if dist < nearest_distance:
 					nearest_distance = dist
 					nearest_enemy = enemy
 
-	# Eğer şartlara uyan bir düşman bulduysak hasarı veriyoruz
 	if nearest_enemy != null:
-		print("Kılıç hedefini buldu! Düşmana vuruldu. Kalan Can: ", nearest_enemy.current_hp - attack_damage)
 		nearest_enemy.take_damage(attack_damage)
-	else:
-		print("Kılıç boşa savruldu, menzilde düşman yok.")
 
 func _on_attack_timer_timeout() -> void:
 	attack_shape.disabled = true
@@ -160,6 +258,9 @@ func _on_attack_timer_timeout() -> void:
 
 func take_damage(amount: int) -> void:
 	if is_down:
+		return
+
+	if is_dashing and dash_invulnerable:
 		return
 
 	current_health = max(current_health - amount, 0)
@@ -177,8 +278,10 @@ func enter_hurt_state() -> void:
 
 	is_hurt = true
 	is_attacking = false
+	is_dashing = false
 	attack_shape.disabled = true
 	velocity.x = 0.0
+	modulate.a = 1.0
 	play_hurt()
 	hurt_timer.start()
 
@@ -189,8 +292,10 @@ func enter_down_state() -> void:
 	is_down = true
 	is_hurt = false
 	is_attacking = false
+	is_dashing = false
 	attack_shape.disabled = true
 	velocity = Vector2.ZERO
+	modulate.a = 1.0
 	down_started.emit()
 	play_down()
 	down_timer.start()
@@ -201,8 +306,37 @@ func _on_down_timer_timeout() -> void:
 	health_changed.emit(current_health, max_health)
 	recovered.emit()
 
+func heal(amount: int) -> bool:
+	if current_health <= 0:
+		return false
+
+	if current_health >= max_health:
+		return false
+
+	current_health = min(current_health + amount, max_health)
+	health_changed.emit(current_health, max_health)
+	return true
+
 func can_be_targeted() -> bool:
-	return not is_down
+	if is_down:
+		return false
+
+	if is_dashing and dash_invulnerable:
+		return false
+
+	return true
+
+func get_dash_cooldown_left() -> float:
+	return dash_cooldown_left
+
+func get_dash_cooldown_total() -> float:
+	return dash_cooldown
+
+func get_skill_1_cooldown_left() -> float:
+	return skill_1_cooldown_left
+
+func get_skill_1_cooldown_total() -> float:
+	return skill_1_cooldown
 
 func update_animation(direction: float) -> void:
 	if is_down:
@@ -211,6 +345,10 @@ func update_animation(direction: float) -> void:
 
 	if is_hurt:
 		play_hurt()
+		return
+
+	if is_dashing:
+		play_dash()
 		return
 
 	if is_attacking:
@@ -234,3 +372,11 @@ func play_down() -> void:
 		sprite.play("down")
 	elif sprite.sprite_frames.has_animation("idle") and sprite.animation != "idle":
 		sprite.play("idle")
+
+func play_dash() -> void:
+	if sprite.sprite_frames.has_animation("run") and sprite.animation != "run":
+		sprite.play("run")
+
+func play_skill() -> void:
+	if sprite.sprite_frames.has_animation("attack"):
+		sprite.play("attack")

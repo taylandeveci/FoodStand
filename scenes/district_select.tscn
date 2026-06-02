@@ -1,6 +1,19 @@
 [gd_scene format=3 uid="uid://dbrydv5xqxs7s"]
 
-[ext_resource type="Script" uid="uid://dl616j611dc7w" path="res://scenes/district_select.gd" id="1_qwe34"]
+[ext_resource type="Script" uid="uid://dl616j611dc7w" path="res://scripts/district_select.gd" id="1_qwe34"]
+[ext_resource type="FontFile" uid="uid://d5vrfcakc278" path="res://Fonts/ThaleahFat.ttf" id="2_l3xtb"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_damgl"]
+bg_color = Color(0.72156864, 0.56078434, 0.16470589, 0.5176471)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l3xtb"]
+bg_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+shadow_size = 5
 
 [node name="DistrictSelect" type="Control" unique_id=412937426]
 layout_mode = 3
@@ -8,33 +21,55 @@ anchors_preset = 0
 offset_right = 67.0
 offset_bottom = 38.0
 script = ExtResource("1_qwe34")
+district_font = ExtResource("2_l3xtb")
 
 [node name="Panel" type="Panel" parent="." unique_id=2030429143]
 layout_mode = 0
 offset_right = 1280.0
 offset_bottom = 720.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_damgl")
 
 [node name="TitleLabel" type="Label" parent="Panel" unique_id=1617915012]
-layout_mode = 0
-offset_left = 639.0
-offset_top = 26.0
-offset_right = 746.0
-offset_bottom = 49.0
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -65.0
+offset_top = 37.0
+offset_right = 63.0
+offset_bottom = 67.0
+grow_horizontal = 2
+theme_override_fonts/font = ExtResource("2_l3xtb")
+theme_override_font_sizes/font_size = 26
 text = "Select District"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="InfoLabel" type="Label" parent="Panel" unique_id=778435982]
-layout_mode = 0
-offset_left = 1031.0
-offset_top = 30.0
-offset_right = 1071.0
-offset_bottom = 53.0
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -77.0
+offset_top = 41.0
+offset_right = -37.0
+offset_bottom = 64.0
+grow_horizontal = 0
+theme_override_fonts/font = ExtResource("2_l3xtb")
 
 [node name="DistrictGrid" type="GridContainer" parent="Panel" unique_id=942011806]
-layout_mode = 0
-offset_left = 322.0
-offset_top = 198.0
-offset_right = 362.0
-offset_bottom = 238.0
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
 columns = 2
 
 [node name="BackButton" type="Button" parent="Panel" unique_id=1251279944]
@@ -43,4 +78,6 @@ offset_left = 54.0
 offset_top = 34.0
 offset_right = 99.0
 offset_bottom = 65.0
+theme_override_fonts/font = ExtResource("2_l3xtb")
+theme_override_styles/normal = SubResource("StyleBoxFlat_l3xtb")
 text = "Back"

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bky1c2fpeh221"]
 
-[ext_resource type="Script" uid="uid://by56j7usisovb" path="res://scripts/enemy.gd" id="1_dlxkk"]
+[ext_resource type="Script" uid="uid://dd4n4geoq33ts" path="res://scripts/tank_enemy.gd" id="1_dlxkk"]
 [ext_resource type="Texture2D" uid="uid://4ekvxp65pa37" path="res://assets/character/char_enemy2/char_enemy2_punch/char_enemy2_punch.png" id="2_dlxkk"]
 [ext_resource type="Texture2D" uid="uid://ca18iv8h73qxb" path="res://assets/character/char_enemy2/char_enemy2_hurt/char_enemy2_hurt.png" id="3_id2k8"]
 [ext_resource type="Texture2D" uid="uid://4hubs0ovqehy" path="res://assets/character/char_enemy2/char_enemy2_walk/char_enemy2_walk.png" id="5_dlxkk"]
@@ -113,7 +113,10 @@ animations = [{
 "name": &"hurt",
 "speed": 5.0
 }, {
-"frames": [],
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_id2k8")
+}],
 "loop": true,
 "name": &"idle",
 "speed": 5.0
@@ -160,13 +163,11 @@ size = Vector2(23.5, 33.5)
 [sub_resource type="CircleShape2D" id="CircleShape2D_c4w8v"]
 radius = 60.0
 
-[node name="Enemy" type="CharacterBody2D" unique_id=1921073836]
+[node name="TankEnemy" type="CharacterBody2D" unique_id=1921073836]
 z_index = 2
 scale = Vector2(2.5, 2.5)
 collision_layer = 4
 script = ExtResource("1_dlxkk")
-speed = 30.0
-max_hp = 6
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=586453731]
 position = Vector2(0, -4.8000007)
