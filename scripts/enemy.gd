@@ -173,5 +173,12 @@ func play_walk() -> void:
 func play_attack() -> void:
 	if is_hurt or is_dead:
 		return
-	if sprite.sprite_frames.has_animation("jab") and sprite.animation != "jab":
-		sprite.play("jab")
+
+	var attack_animation: StringName = &""
+	if sprite.sprite_frames.has_animation("attack"):
+		attack_animation = &"attack"
+	elif sprite.sprite_frames.has_animation("jab"):
+		attack_animation = &"jab"
+
+	if attack_animation != &"" and (sprite.animation != attack_animation or not sprite.is_playing()):
+		sprite.play(attack_animation)

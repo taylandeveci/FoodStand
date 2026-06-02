@@ -154,7 +154,7 @@ animations = [{
 }],
 "loop": true,
 "name": &"walk",
-"speed": 5.0
+"speed": 10.0
 }]
 
 [node name="Customer" type="Node2D" unique_id=608039442]
@@ -162,8 +162,8 @@ scale = Vector2(1.5, 1.5)
 script = ExtResource("1_xss0h")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1505176999]
-position = Vector2(-10.666667, -16.000002)
-scale = Vector2(2, 2.01)
+position = Vector2(-14.666667, 1.3333334)
+scale = Vector2(1.3828125, 1.4804168)
 sprite_frames = SubResource("SpriteFrames_pm32s")
 animation = &"walk"
 
