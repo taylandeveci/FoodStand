@@ -528,3 +528,67 @@ func register_night_won() -> String:
 		return "district_complete"
 
 	return "next_day"
+	
+const SAVE_PATH := "user://run_save.cfg"
+
+func save_run() -> void:
+	var config := ConfigFile.new()
+
+	config.set_value("progress", "unlocked_district_count", unlocked_district_count)
+	config.set_value("progress", "current_district", current_district)
+	config.set_value("progress", "district_day_progress", district_day_progress)
+
+	config.set_value("upgrades", "day_coin_bonus", day_coin_bonus)
+	config.set_value("upgrades", "day_patience_bonus", day_patience_bonus)
+	config.set_value("upgrades", "day_timing_bonus", day_timing_bonus)
+	config.set_value("upgrades", "night_stand_hp_bonus", night_stand_hp_bonus)
+	config.set_value("upgrades", "night_player_damage_bonus", night_player_damage_bonus)
+	config.set_value("upgrades", "night_recover_health_bonus", night_recover_health_bonus)
+
+	config.set_value("permanent", "permanent_appeal_bonus", permanent_appeal_bonus)
+	config.set_value("permanent", "unlocked_recipe_names", unlocked_recipe_names)
+	config.set_value("permanent", "district_rewards_claimed", district_rewards_claimed)
+	config.set_value("permanent", "district_claimed_reward_titles", district_claimed_reward_titles)
+
+	config.set_value("survival", "survival_inventory", survival_inventory)
+	config.set_value("survival", "bag_upgrade_level", bag_upgrade_level)
+
+	config.save(SAVE_PATH)
+
+
+func load_run() -> void:
+	var config := ConfigFile.new()
+	var err := config.load(SAVE_PATH)
+
+	if err != OK:
+		reset_run()
+		save_run()
+		return
+
+	unlocked_district_count = int(config.get_value("progress", "unlocked_district_count", 1))
+	current_district = int(config.get_value("progress", "current_district", 0))
+	district_day_progress = config.get_value("progress", "district_day_progress", [0, 0, 0, 0, 0])
+
+	day_coin_bonus = int(config.get_value("upgrades", "day_coin_bonus", 0))
+	day_patience_bonus = float(config.get_value("upgrades", "day_patience_bonus", 0.0))
+	day_timing_bonus = float(config.get_value("upgrades", "day_timing_bonus", 0.0))
+
+	night_stand_hp_bonus = int(config.get_value("upgrades", "night_stand_hp_bonus", 0))
+	night_player_damage_bonus = int(config.get_value("upgrades", "night_player_damage_bonus", 0))
+	night_recover_health_bonus = int(config.get_value("upgrades", "night_recover_health_bonus", 0))
+
+	permanent_appeal_bonus = int(config.get_value("permanent", "permanent_appeal_bonus", 0))
+	unlocked_recipe_names = config.get_value("permanent", "unlocked_recipe_names", ["BURGER", "HOTDOG"])
+	district_rewards_claimed = config.get_value("permanent", "district_rewards_claimed", [false, false, false, false, false])
+	district_claimed_reward_titles = config.get_value("permanent", "district_claimed_reward_titles", ["", "", "", "", ""])
+
+	survival_inventory = config.get_value("survival", "survival_inventory", {
+		"medkit": 0,
+		"repair_kit": 0,
+		"barricade": 0
+	})
+
+	bag_upgrade_level = int(config.get_value("survival", "bag_upgrade_level", 0))
+
+	pending_reward_district_index = -1
+	pending_reward_options.clear()

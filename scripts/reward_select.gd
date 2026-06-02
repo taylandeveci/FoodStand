@@ -53,6 +53,7 @@ func choose_reward(index: int) -> void:
 		return
 
 	RunManager.apply_reward_option(option_id)
+	RunManager.save_run()
 	get_tree().change_scene_to_file(DISTRICT_SELECT_SCENE_PATH)
 
 func _on_reward_button_1_pressed() -> void:

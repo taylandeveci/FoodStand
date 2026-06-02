@@ -81,7 +81,7 @@ func apply_default_layout() -> void:
 		barricade_prompt_label.visible = false
 
 	if survival_bar:
-		survival_bar.position = Vector2(760, 20)
+		survival_bar.position = Vector2(900, 20)
 		survival_bar.size = Vector2(360, 44)
 
 

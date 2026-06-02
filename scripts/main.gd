@@ -1374,6 +1374,7 @@ func _on_night_timer_timeout() -> void:
 		hud.show_phase_night_survived()
 
 	var run_result := RunManager.register_night_won()
+	RunManager.save_run()
 
 	match run_result:
 		"next_day":
@@ -1411,6 +1412,7 @@ func _on_boss_died() -> void:
 		hud.show_phase_night_survived()
 
 	var run_result := RunManager.register_night_won()
+	RunManager.save_run()
 
 	match run_result:
 		"next_day":

@@ -978,6 +978,29 @@ cache/0/64/0/underline_position = 9.5625
 cache/0/64/0/underline_thickness = 3.1875
 cache/0/64/0/scale = 1.0
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2wyq8"]
+bg_color = Color(0.72156864, 0.56078434, 0.16470589, 0.5176471)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vxglm"]
+bg_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2f3dj"]
+bg_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+shadow_size = 5
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2wyq8"]
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wsu2k"]
 size = Vector2(9, 203)
 
@@ -1276,6 +1299,7 @@ offset_left = 240.0
 offset_top = 295.0
 offset_right = 974.0
 offset_bottom = 637.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_2wyq8")
 
 [node name="ShopTitleLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=383066355]
 layout_mode = 0
@@ -1283,6 +1307,8 @@ offset_left = 4.0
 offset_top = 4.0
 offset_right = 82.0
 offset_bottom = 27.0
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 22
 text = "Shop"
 
 [node name="ShopMoneyLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=1865744250]
@@ -1291,6 +1317,8 @@ offset_left = 642.0
 offset_top = 3.0
 offset_right = 713.0
 offset_bottom = 26.0
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 22
 text = "Money: 0"
 
 [node name="ShopModeLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=659282147]
@@ -1299,6 +1327,8 @@ offset_left = 3.0
 offset_top = 28.0
 offset_right = 111.0
 offset_bottom = 51.0
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 22
 text = "Day Upgrades"
 
 [node name="MarketTypeLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=343512933]
@@ -1307,6 +1337,8 @@ offset_left = 315.0
 offset_top = 3.0
 offset_right = 399.0
 offset_bottom = 26.0
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 22
 text = "UPGRADES"
 
 [node name="InventoryLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=2066823456]
@@ -1322,30 +1354,55 @@ offset_left = 9.0
 offset_top = 295.0
 offset_right = 128.0
 offset_bottom = 326.0
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_styles/normal = SubResource("StyleBoxFlat_vxglm")
 text = "Switch Market"
 
 [node name="UpgradeList" type="VBoxContainer" parent="HUD/HUDRoot/ShopPanel" unique_id=1238476555]
-layout_mode = 0
-offset_left = 327.0
-offset_top = 78.0
-offset_right = 415.0
-offset_bottom = 214.0
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -51.5
+offset_top = -64.0
+offset_right = 51.5
+offset_bottom = 64.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="UpgradeButton1" type="Button" parent="HUD/HUDRoot/ShopPanel/UpgradeList" unique_id=100574059]
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 22
 text = "Upgrade 1"
 
 [node name="UpgradeButton2" type="Button" parent="HUD/HUDRoot/ShopPanel/UpgradeList" unique_id=1908957445]
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 22
 text = "Upgrade 2"
 
 [node name="UpgradeButton3" type="Button" parent="HUD/HUDRoot/ShopPanel/UpgradeList" unique_id=1223086962]
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 22
 text = "Upgrade 3"
 
 [node name="UpgradeButton4" type="Button" parent="HUD/HUDRoot/ShopPanel/UpgradeList" unique_id=165234090]
 layout_mode = 2
-text = "Upgrade 3"
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 22
+text = "Upgrade 4"
 
 [node name="ContinueButton" type="Button" parent="HUD/HUDRoot/ShopPanel" unique_id=444386675]
 layout_mode = 0
@@ -1353,34 +1410,52 @@ offset_left = 631.0
 offset_top = 294.0
 offset_right = 710.0
 offset_bottom = 325.0
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_styles/normal = SubResource("StyleBoxFlat_2f3dj")
 text = "Continue"
 
 [node name="SurvivalBar" type="Panel" parent="HUD/HUDRoot" unique_id=241584772]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -55.0
+offset_top = 15.0
+offset_right = -15.0
+offset_bottom = 44.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxEmpty_2wyq8")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="HUD/HUDRoot/SurvivalBar" unique_id=1213380666]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -211.0
+offset_bottom = 15.0
+grow_horizontal = 0
+alignment = 1
 
 [node name="MedkitLabel" type="Label" parent="HUD/HUDRoot/SurvivalBar/HBoxContainer" unique_id=842422148]
 layout_mode = 2
+theme_override_fonts/font = ExtResource("30_5q0nq")
 text = "Medkit: 0"
 
 [node name="RepairLabel" type="Label" parent="HUD/HUDRoot/SurvivalBar/HBoxContainer" unique_id=703397243]
 layout_mode = 2
+theme_override_fonts/font = ExtResource("30_5q0nq")
 text = "Repair: 0"
 
 [node name="BarricadeLabel" type="Label" parent="HUD/HUDRoot/SurvivalBar/HBoxContainer" unique_id=1102450967]
 layout_mode = 2
+theme_override_fonts/font = ExtResource("30_5q0nq")
 text = "Barricade: 0"
 
 [node name="BarricadePromptLabel" type="Label" parent="HUD/HUDRoot" unique_id=747429627]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
+theme_override_fonts/font = ExtResource("30_5q0nq")
 text = "Press B to place Barricade"
 
 [node name="LeftWall" type="StaticBody2D" parent="." unique_id=1686937118]
