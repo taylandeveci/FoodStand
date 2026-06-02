@@ -1,7 +1,5 @@
 extends Control
 
-@export var district_font: Font
-
 @onready var title_label: Label = $Panel/TitleLabel
 @onready var info_label: Label = $Panel/InfoLabel
 @onready var district_grid: GridContainer = $Panel/DistrictGrid
@@ -9,20 +7,34 @@ extends Control
 
 const GAME_SCENE_PATH: String = "res://scenes/main.tscn"
 const MENU_SCENE_PATH: String = "res://scenes/main_menu.tscn"
+const DISTRICT_FONT: Font = preload("res://Fonts/ThaleahFat.ttf")
 
 func _ready() -> void:
-	back_button.pressed.connect(_on_back_pressed)
+	var back_pressed_callable := Callable(self, "_on_back_pressed")
+	if back_button and not back_button.pressed.is_connected(back_pressed_callable):
+		back_button.pressed.connect(back_pressed_callable)
+
+	call_deferred("_setup_screen")
+
+func _setup_screen() -> void:
 	build_district_buttons()
 	update_info_text()
 
 func build_district_buttons() -> void:
+	if district_grid == null:
+		return
+
 	for child in district_grid.get_children():
 		child.queue_free()
 
 	for i in range(RunManager.DISTRICT_COUNT):
 		var button: Button = Button.new()
 		button.custom_minimum_size = Vector2(360, 170)
-		button.add_theme_font_override("font", district_font)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+		if DISTRICT_FONT != null:
+			button.add_theme_font_override("font", DISTRICT_FONT)
 		button.add_theme_font_size_override("font_size", 20)
 
 		var district_name: String = str(RunManager.DISTRICT_NAMES[i])
@@ -63,7 +75,7 @@ func build_reward_preview_text(index: int) -> String:
 	if options.is_empty():
 		return "- No reward data"
 
-	var lines: Array[String] = []
+	var lines: Array = []
 
 	for option in options:
 		var option_title: String = str(option.get("title", "Reward"))
@@ -72,6 +84,9 @@ func build_reward_preview_text(index: int) -> String:
 	return "\n".join(lines)
 
 func update_info_text() -> void:
+	if info_label == null:
+		return
+
 	var unlocked_recipes_text: String = ", ".join(RunManager.get_unlocked_recipe_names())
 
 	info_label.text = "Unlocked Districts: %d / %d\nUnlocked Recipes: %s" % [

@@ -17,16 +17,20 @@ shadow_size = 5
 
 [node name="DistrictSelect" type="Control" unique_id=412937426]
 layout_mode = 3
-anchors_preset = 0
-offset_right = 67.0
-offset_bottom = 38.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_qwe34")
-district_font = ExtResource("2_l3xtb")
 
 [node name="Panel" type="Panel" parent="." unique_id=2030429143]
-layout_mode = 0
-offset_right = 1280.0
-offset_bottom = 720.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_damgl")
 
 [node name="TitleLabel" type="Label" parent="Panel" unique_id=1617915012]
@@ -50,34 +54,35 @@ layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -77.0
-offset_top = 41.0
-offset_right = -37.0
-offset_bottom = 64.0
+offset_left = -390.0
+offset_top = 34.0
+offset_right = -36.0
+offset_bottom = 100.0
 grow_horizontal = 0
 theme_override_fonts/font = ExtResource("2_l3xtb")
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 2
+autowrap_mode = 3
 
 [node name="DistrictGrid" type="GridContainer" parent="Panel" unique_id=942011806]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -20.0
-offset_right = 20.0
-offset_bottom = 20.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 0
+offset_left = 170.0
+offset_top = 138.0
+offset_right = 1110.0
+offset_bottom = 698.0
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 24
 columns = 2
 
 [node name="BackButton" type="Button" parent="Panel" unique_id=1251279944]
 layout_mode = 0
-offset_left = 54.0
-offset_top = 34.0
-offset_right = 99.0
-offset_bottom = 65.0
+offset_left = 42.0
+offset_top = 28.0
+offset_right = 168.0
+offset_bottom = 74.0
 theme_override_fonts/font = ExtResource("2_l3xtb")
+theme_override_font_sizes/font_size = 22
 theme_override_styles/normal = SubResource("StyleBoxFlat_l3xtb")
 text = "Back"
+
+[connection signal="pressed" from="Panel/BackButton" to="." method="_on_back_pressed"]

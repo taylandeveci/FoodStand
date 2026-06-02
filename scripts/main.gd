@@ -62,6 +62,7 @@ var timing_direction: float = 1.0
 var service_hold_time: float = 0.0
 var service_hold_active: bool = false
 var service_hold_locked_value: float = 0.0
+var service_session_started: bool = false
 
 # Recipe system
 var current_recipe_sequence: Array = []
@@ -515,6 +516,7 @@ func start_morning_phase() -> void:
 	current_shop_mode = ""
 	current_shop_section = "upgrade"
 	shop_upgrade_bought_this_visit = [false, false, false, false]
+	service_session_started = false
 
 	final_night_active = false
 	boss_spawned_this_night = false
@@ -648,6 +650,9 @@ func _on_food_cart_interacted() -> void:
 
 		GameState.CUSTOMER_WAITING:
 			if not recipe_input_active:
+				if not service_session_started:
+					reset_mission_panel()
+				service_session_started = true
 				start_recipe_input_phase()
 
 		GameState.CLEANING:
@@ -659,6 +664,7 @@ func _on_food_cart_interacted() -> void:
 
 func open_cart() -> void:
 	game_state = GameState.CUSTOMER_WALKING
+	service_session_started = false
 	complete_mission(MISSION_GO_FOOD_CART)
 	set_status("Stand opened. Customers are coming!")
 	set_result("Stand opened!")
@@ -732,8 +738,11 @@ func activate_front_customer(customer: Node2D) -> void:
 	if customer.has_method("show_order"):
 		customer.call("show_order")
 
-	set_status("Customer ready. Hold to start cooking.")
-	set_result("Order: %s" % get_recipe_display_name(current_order))
+	if service_session_started:
+		start_recipe_input_phase()
+	else:
+		set_status("Customer ready. Hold to start cooking.")
+		set_result("Order: %s" % get_recipe_display_name(current_order))
 
 
 func try_activate_front_customer() -> void:
@@ -852,8 +861,7 @@ func register_recipe_input(value: String) -> void:
 		if food_cart and food_cart.has_method("set_recipe_hint"):
 			food_cart.call("set_recipe_hint", "")
 
-		set_status("Correct recipe! Now serve it.")
-		start_service_phase()
+		complete_customer_service_from_recipe()
 
 func fail_recipe_input() -> void:
 	recipe_input_active = false
@@ -870,6 +878,38 @@ func fail_recipe_input() -> void:
 	if active_customer and active_customer.has_method("leave_to"):
 		active_customer.call("leave_to", customer_exit_point.global_position)
 
+	advance_queue()
+
+func complete_customer_service_from_recipe() -> void:
+	player_recipe_input.clear()
+
+	if service_panel:
+		service_panel.visible = false
+
+	hide_service_prompt()
+	reset_service_hold()
+
+	var district_profile: Dictionary = RunManager.get_current_district_profile()
+	var district_coin_bonus: int = int(district_profile.get("serve_coin_bonus", 0))
+
+	var recipe_data: Dictionary = get_recipe_data(current_order)
+	var base_coin: int = int(recipe_data.get("base_coin", 1))
+	var base_appeal: int = int(recipe_data.get("base_appeal", 0))
+
+	var coin_gain: int = base_coin + RunManager.day_coin_bonus + district_coin_bonus
+	var appeal_gain: int = base_appeal
+
+	money += coin_gain
+	local_appeal += appeal_gain
+	game_state = GameState.CUSTOMER_LEAVING
+
+	if active_customer and active_customer.has_method("leave_to"):
+		active_customer.call("leave_to", customer_exit_point.global_position)
+
+	set_status("%s served. Next customer coming." % get_recipe_display_name(current_order))
+	set_result("Served | +%d coin | +%d appeal" % [coin_gain, appeal_gain])
+
+	update_ui()
 	advance_queue()
 
 func start_service_phase() -> void:
@@ -962,7 +1002,11 @@ func update_food_cart_interaction_enabled() -> void:
 	if food_cart == null or not food_cart.has_method("set_interaction_enabled"):
 		return
 
-	var can_interact: bool = game_state == GameState.OPEN_CART or game_state == GameState.CUSTOMER_WAITING
+	var can_interact: bool = game_state == GameState.OPEN_CART or (
+		game_state == GameState.CUSTOMER_WAITING
+		and not service_session_started
+		and not recipe_input_active
+	)
 	food_cart.call("set_interaction_enabled", can_interact)
 
 func update_service_hold(delta: float) -> void:
@@ -1015,6 +1059,7 @@ func open_shop(mode: String) -> void:
 	current_shop_section = "upgrade"
 	game_state = GameState.SHOP
 	shop_upgrade_bought_this_visit = [false, false, false, false]
+	service_session_started = false
 
 	refresh_shop_ui()
 	set_status("Choose what to buy, then continue.")
