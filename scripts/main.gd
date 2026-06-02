@@ -26,6 +26,7 @@ enum GameState {
 @export var min_trash_count: int = 1
 @export var max_trash_count: int = 3
 @export var service_bar_speed: float = 140.0
+@export var interact_hold_duration: float = 1.0
 
 @export var night_duration: float = 60.0
 @export var enemy_spawn_interval: float = 4.0
@@ -44,6 +45,9 @@ var active_customer: Node2D = null
 var current_order: String = ""
 var timing_value: float = 0.0
 var timing_direction: float = 1.0
+var service_hold_time: float = 0.0
+var service_hold_active: bool = false
+var service_hold_locked_value: float = 0.0
 
 # Recipe system
 var current_recipe_sequence: Array = []
@@ -107,6 +111,7 @@ const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
 @onready var night_background: Sprite2D = $NightBackground
 
 @onready var player = $Player
+@onready var player_camera: Camera2D = get_node_or_null("Player/Camera2D") as Camera2D
 @onready var hud = get_node_or_null("HUD")
 @onready var trash_points: Node2D = $TrashPoints
 @onready var trash_container: Node2D = $TrashContainer
@@ -136,6 +141,7 @@ const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
 @onready var order_label: Label = get_node_or_null("HUD/HUDRoot/ServicePanel/OrderLabel") as Label
 @onready var hint_label: Label = get_node_or_null("HUD/HUDRoot/ServicePanel/HintLabel") as Label
 @onready var timing_bar: ProgressBar = get_node_or_null("HUD/HUDRoot/ServicePanel/TimingBar") as ProgressBar
+@onready var service_prompt: Sprite2D = get_node_or_null("HUD/HUDRoot/ServicePanel/PressEPrompt") as Sprite2D
 
 # Shop button refs
 @onready var shop_button_1: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/UpgradeList/UpgradeButton1") as Button
@@ -194,6 +200,8 @@ func _ready() -> void:
 
 	if service_panel:
 		service_panel.visible = false
+	if service_prompt:
+		hide_service_prompt()
 
 	if result_label:
 		result_label.text = ""
@@ -207,11 +215,16 @@ func _ready() -> void:
 	update_ui()
 
 func _process(delta: float) -> void:
-	if game_state == GameState.SERVING:
-		update_service_bar(delta)
+	update_food_cart_interaction_enabled()
+	update_phase_animation_anchor()
 
-		if Input.is_action_just_pressed("interact"):
-			finish_service_phase()
+	if game_state == GameState.SERVING:
+		update_service_hold(delta)
+		if game_state == GameState.SERVING and not service_hold_active:
+			update_service_bar(delta)
+	else:
+		reset_service_hold()
+		hide_service_prompt()
 
 	if recipe_input_active:
 		handle_recipe_input()
@@ -321,6 +334,7 @@ func start_morning_phase() -> void:
 	])
 
 	if hud and hud.has_method("show_phase_morning_prep"):
+		position_phase_animation_above_food_cart()
 		hud.show_phase_morning_prep()
 
 	spawn_random_trash()
@@ -479,7 +493,7 @@ func _on_customer_arrived(customer: Node2D) -> void:
 		if customer.has_method("show_order"):
 			customer.call("show_order")
 
-		set_status("Customer ready. Press E to start cooking.")
+		set_status("Customer ready. Hold to start cooking.")
 		set_result("Order: %s" % current_order)
 	else:
 		if customer.has_method("stop_patience"):
@@ -519,7 +533,7 @@ func _on_customer_patience_ran_out(customer: Node2D) -> void:
 	game_state = GameState.CUSTOMER_LEAVING
 
 	if customer.has_method("leave_to"):
-		customer.call("leave_to", customer_exit_point.global_position)
+		customer.call("leave_to", customer_exit_point.global_position, false)
 
 	advance_queue()
 
@@ -604,6 +618,7 @@ func start_service_phase() -> void:
 	game_state = GameState.SERVING
 	timing_value = 0.0
 	timing_direction = 1.0
+	reset_service_hold()
 
 	if active_customer and active_customer.has_method("stop_patience"):
 		active_customer.call("stop_patience")
@@ -615,14 +630,16 @@ func start_service_phase() -> void:
 		order_label.text = "Order: %s" % get_recipe_display_name(current_order)
 
 	if hint_label:
-		hint_label.text = "Press E near the center."
+		hint_label.text = "Hold near the center."
+
+	show_service_prompt_idle()
 
 	if timing_bar:
 		timing_bar.min_value = 0.0
 		timing_bar.max_value = 100.0
 		timing_bar.value = 0.0
 
-	set_status("Service phase: press E at the right moment.")
+	set_status("Service phase: hold at the right moment.")
 	set_result("")
 
 func update_service_bar(delta: float) -> void:
@@ -638,9 +655,10 @@ func update_service_bar(delta: float) -> void:
 	if timing_bar:
 		timing_bar.value = timing_value
 
-func finish_service_phase() -> void:
+func finish_service_phase(timing_snapshot: float = -1.0) -> void:
 	if service_panel:
 		service_panel.visible = false
+	hide_service_prompt()
 
 	var district_profile: Dictionary = RunManager.get_current_district_profile()
 	var district_coin_bonus: int = int(district_profile.get("serve_coin_bonus", 0))
@@ -653,16 +671,17 @@ func finish_service_phase() -> void:
 	var perfect_max: float = clamp(55.0 + RunManager.day_timing_bonus, 0.0, 100.0)
 	var nice_min: float = clamp(30.0 - RunManager.day_timing_bonus, 0.0, 100.0)
 	var nice_max: float = clamp(70.0 + RunManager.day_timing_bonus, 0.0, 100.0)
+	var serve_timing: float = timing_snapshot if timing_snapshot >= 0.0 else timing_value
 
 	var result_text: String = "Bad Serve"
 	var coin_gain: int = max(1, base_coin - 2) + RunManager.day_coin_bonus + district_coin_bonus
 	var appeal_gain: int = 0
 
-	if timing_value >= perfect_min and timing_value <= perfect_max:
+	if serve_timing >= perfect_min and serve_timing <= perfect_max:
 		result_text = "Perfect Serve"
 		coin_gain = base_coin + 2 + RunManager.day_coin_bonus + district_coin_bonus
 		appeal_gain = base_appeal + 1
-	elif timing_value >= nice_min and timing_value <= nice_max:
+	elif serve_timing >= nice_min and serve_timing <= nice_max:
 		result_text = "Nice Serve"
 		coin_gain = base_coin + RunManager.day_coin_bonus + district_coin_bonus
 		appeal_gain = base_appeal
@@ -680,6 +699,57 @@ func finish_service_phase() -> void:
 
 	update_ui()
 	advance_queue()
+
+func update_food_cart_interaction_enabled() -> void:
+	if food_cart == null or not food_cart.has_method("set_interaction_enabled"):
+		return
+
+	var can_interact: bool = game_state == GameState.OPEN_CART or game_state == GameState.CUSTOMER_WAITING
+	food_cart.call("set_interaction_enabled", can_interact)
+
+func update_service_hold(delta: float) -> void:
+	if Input.is_action_pressed("interact"):
+		if not service_hold_active:
+			service_hold_active = true
+			service_hold_locked_value = timing_value
+
+		service_hold_time = min(service_hold_time + delta, interact_hold_duration)
+		show_service_prompt_progress(service_hold_time / max(interact_hold_duration, 0.001))
+
+		if service_hold_time >= interact_hold_duration:
+			var locked_timing: float = service_hold_locked_value
+			reset_service_hold()
+			hide_service_prompt()
+			finish_service_phase(locked_timing)
+	else:
+		if service_hold_active or service_hold_time > 0.0:
+			reset_service_hold()
+		show_service_prompt_idle()
+
+func reset_service_hold() -> void:
+	service_hold_time = 0.0
+	service_hold_active = false
+	service_hold_locked_value = 0.0
+
+func show_service_prompt_idle() -> void:
+	if service_prompt == null:
+		return
+	service_prompt.visible = true
+	service_prompt.frame = 0
+
+func show_service_prompt_progress(progress: float) -> void:
+	if service_prompt == null:
+		return
+	var frame_count: int = max(service_prompt.hframes, 1)
+	var clamped_progress: float = clampf(progress, 0.0, 1.0)
+	service_prompt.visible = true
+	service_prompt.frame = mini(int(clamped_progress * float(frame_count - 1)), frame_count - 1)
+
+func hide_service_prompt() -> void:
+	if service_prompt == null:
+		return
+	service_prompt.visible = false
+	service_prompt.frame = 0
 
 func open_shop(mode: String) -> void:
 	shop_open = true
@@ -875,11 +945,41 @@ func start_night_phase() -> void:
 	night_timer.start()
 	enemy_spawn_timer.start()
 
-	set_status("Night started! Protect the stand.")
+	clear_status()
 	set_result("Survive until dawn.")
 
 	if hud and hud.has_method("show_phase_night_started"):
+		position_phase_animation_above_food_cart()
 		hud.show_phase_night_started()
+
+func update_phase_animation_anchor() -> void:
+	if hud == null or not hud.has_method("is_phase_animation_visible"):
+		return
+
+	if not bool(hud.call("is_phase_animation_visible")):
+		return
+
+	position_phase_animation_above_food_cart()
+
+func position_phase_animation_above_food_cart() -> void:
+	if hud == null or not hud.has_method("set_phase_animation_position"):
+		return
+
+	hud.call("set_phase_animation_position", get_food_cart_phase_animation_screen_position())
+
+func get_food_cart_phase_animation_screen_position() -> Vector2:
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var fallback_position := Vector2(viewport_size.x * 0.5, 92.0)
+	if food_cart == null or player_camera == null:
+		return fallback_position
+
+	var anchor_node: Node2D = food_cart.get_node_or_null("InteractPrompt") as Node2D
+	var anchor_world_x: float = food_cart.global_position.x + 30.0
+	if anchor_node:
+		anchor_world_x = anchor_node.global_position.x
+
+	var screen_x: float = viewport_size.x * 0.5 + (anchor_world_x - player_camera.global_position.x)
+	return Vector2(screen_x, 92.0)
 
 func _on_enemy_spawn_timer_timeout() -> void:
 	if game_state != GameState.NIGHT:

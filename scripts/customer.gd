@@ -19,12 +19,12 @@ var order_name: String = ""
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var order_label: Label = $OrderBubble/Label
-@onready var patience_bar: ProgressBar = $PatienceBar
+@onready var patience_bar: Sprite2D = $PatienceBar
 
 func _ready() -> void:
 	patience = max_patience
-	patience_bar.max_value = max_patience
-	patience_bar.value = patience
+	update_patience_bar_frame()
+	patience_bar.visible = false
 	play_idle()
 
 func _process(delta: float) -> void:
@@ -72,7 +72,7 @@ func update_patience(delta: float) -> void:
 
 	patience -= patience_drain_speed * delta
 	patience = max(patience, 0.0)
-	patience_bar.value = patience
+	update_patience_bar_frame()
 
 	if patience <= 0.0:
 		patience_active = false
@@ -85,12 +85,12 @@ func set_target(pos: Vector2) -> void:
 	is_leaving = false
 	play_walk()
 
-func leave_to(pos: Vector2) -> void:
+func leave_to(pos: Vector2, hide_patience_visual: bool = true) -> void:
 	target_position = pos
 	has_target = true
 	has_arrived = false
 	is_leaving = true
-	stop_patience()
+	stop_patience(hide_patience_visual)
 	hide_order()
 	play_walk()
 
@@ -106,14 +106,25 @@ func show_order() -> void:
 
 func start_patience() -> void:
 	patience = max_patience
-	patience_bar.max_value = max_patience
-	patience_bar.value = patience
+	update_patience_bar_frame()
 	patience_active = true
 	patience_bar.visible = true
 
-func stop_patience() -> void:
+func stop_patience(hide_visual: bool = true) -> void:
 	patience_active = false
-	patience_bar.visible = false
+	if hide_visual:
+		patience_bar.visible = false
+	else:
+		update_patience_bar_frame()
+		patience_bar.visible = true
+
+func update_patience_bar_frame() -> void:
+	var frame_count: int = max(patience_bar.hframes, 1)
+	var normalized: float = 1.0
+	if max_patience > 0.0:
+		normalized = 1.0 - (patience / max_patience)
+	normalized = clampf(normalized, 0.0, 1.0)
+	patience_bar.frame = mini(int(normalized * float(frame_count - 1)), frame_count - 1)
 
 func play_idle() -> void:
 	if sprite.sprite_frames.has_animation("idle") and sprite.animation != "idle":

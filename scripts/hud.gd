@@ -1,5 +1,12 @@
 extends CanvasLayer
 
+const PHASE_DAYTIME_TEXTURE: Texture2D = preload("res://assets/props/props_daytime/prop_daytime.png")
+const PHASE_NIGHTTIME_TEXTURE: Texture2D = preload("res://assets/props/props_nighttime/prop_nighttime.png")
+const PHASE_DAYTIME_FRAMES: int = 30
+const PHASE_NIGHTTIME_FRAMES: int = 30
+const PHASE_ANIMATION_DURATION: float = 4.0
+const PHASE_ANIMATION_END_HOLD: float = 0.32
+
 @onready var hud_root = $HUDRoot
 
 @onready var coin_icon = $HUDRoot/CoinIcon
@@ -17,6 +24,7 @@ extends CanvasLayer
 @onready var timing_bar: ProgressBar = $HUDRoot/ServicePanel/TimingBar
 
 @onready var phase_label: Label = $HUDRoot/PhaseLabel
+@onready var phase_animation: Sprite2D = $HUDRoot/PhaseAnimation
 
 # SHOP PANEL
 @onready var shop_panel: Panel = $HUDRoot/ShopPanel
@@ -28,6 +36,8 @@ extends CanvasLayer
 @onready var upgrade_button_2: Button = $HUDRoot/ShopPanel/UpgradeList/UpgradeButton2
 @onready var upgrade_button_3: Button = $HUDRoot/ShopPanel/UpgradeList/UpgradeButton3
 @onready var continue_button: Button = $HUDRoot/ShopPanel/ContinueButton
+
+var phase_animation_tween: Tween
 
 func _ready() -> void:
 	clear_feedback()
@@ -60,6 +70,12 @@ func apply_default_layout() -> void:
 		phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		phase_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		phase_label.visible = false
+
+	if phase_animation:
+		phase_animation.position = Vector2(576, 140)
+		phase_animation.scale = Vector2(4.0, 4.0)
+		phase_animation.centered = true
+		phase_animation.visible = false
 
 
 # -------------------------
@@ -196,6 +212,7 @@ func show_warning(text: String) -> void:
 # -------------------------
 
 func show_phase_text(text: String) -> void:
+	hide_phase_animation()
 	phase_label.text = text
 	phase_label.visible = true
 	phase_label.modulate.a = 0.0
@@ -217,13 +234,62 @@ func show_phase_text(text: String) -> void:
 	await tween.finished
 	phase_label.visible = false
 
+func show_phase_animation(texture: Texture2D, frame_count: int, duration: float = PHASE_ANIMATION_DURATION) -> void:
+	if phase_animation == null:
+		return
+
+	phase_label.visible = false
+	phase_label.text = ""
+
+	hide_phase_animation()
+
+	phase_animation.texture = texture
+	phase_animation.hframes = max(frame_count, 1)
+	phase_animation.frame = 0
+	phase_animation.visible = true
+
+	var tween := create_tween()
+	phase_animation_tween = tween
+	tween.tween_method(_set_phase_animation_progress.bind(frame_count), 0.0, 1.0, duration)
+	tween.tween_interval(PHASE_ANIMATION_END_HOLD)
+
+	await tween.finished
+
+	if phase_animation_tween == tween:
+		phase_animation.visible = false
+		phase_animation_tween = null
+
+func hide_phase_animation() -> void:
+	if phase_animation_tween:
+		phase_animation_tween.kill()
+		phase_animation_tween = null
+
+	if phase_animation:
+		phase_animation.visible = false
+		phase_animation.frame = 0
+
+func set_phase_animation_position(screen_position: Vector2) -> void:
+	if phase_animation == null:
+		return
+	phase_animation.position = screen_position
+
+func is_phase_animation_visible() -> bool:
+	return phase_animation != null and phase_animation.visible
+
+func _set_phase_animation_progress(progress: float, frame_count: int) -> void:
+	if phase_animation == null:
+		return
+
+	var clamped_progress: float = clampf(progress, 0.0, 1.0)
+	phase_animation.frame = mini(int(clamped_progress * float(frame_count - 1)), frame_count - 1)
+
 
 func show_phase_morning_prep() -> void:
-	show_phase_text("MORNING PREP")
+	show_phase_animation(PHASE_DAYTIME_TEXTURE, PHASE_DAYTIME_FRAMES)
 
 
 func show_phase_night_started() -> void:
-	show_phase_text("NIGHT STARTED")
+	show_phase_animation(PHASE_NIGHTTIME_TEXTURE, PHASE_NIGHTTIME_FRAMES)
 
 
 func show_phase_night_survived() -> void:
@@ -280,3 +346,5 @@ func clear_feedback() -> void:
 	if phase_label:
 		phase_label.text = ""
 		phase_label.visible = false
+
+	hide_phase_animation()

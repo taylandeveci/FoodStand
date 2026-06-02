@@ -22,6 +22,7 @@
 [ext_resource type="FontFile" uid="uid://d5vrfcakc278" path="res://assets/ThaleahFat.ttf" id="30_5q0nq"]
 [ext_resource type="Script" uid="uid://dfiloq4ggsxhv" path="res://scripts/hud.gd" id="30_dgi5k"]
 [ext_resource type="Texture2D" uid="uid://ck8165v11mgck" path="res://assets/tileset/Decoration 32x32.png" id="32_qkpxi"]
+[ext_resource type="Texture2D" path="res://assets/props/props_pressE/prop_pressE.png" id="33_press_e"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_k12tt"]
 texture = ExtResource("2_wsu2k")
@@ -1278,7 +1279,16 @@ offset_right = 40.0
 offset_bottom = 23.0
 theme_override_fonts/font = ExtResource("30_5q0nq")
 theme_override_font_sizes/font_size = 35
-text = "Press E near the center"
+text = "Hold near the center"
+
+[node name="PressEPrompt" type="Sprite2D" parent="HUD/HUDRoot/ServicePanel" unique_id=604067398]
+position = Vector2(0, 42)
+scale = Vector2(4, 4)
+centered = false
+texture = ExtResource("33_press_e")
+hframes = 20
+frame = 0
+visible = false
 
 [node name="TimingBar" type="ProgressBar" parent="HUD/HUDRoot/ServicePanel" unique_id=608067398]
 layout_mode = 0
@@ -1305,6 +1315,11 @@ theme_override_fonts/font = SubResource("FontFile_fuf3a")
 theme_override_font_sizes/font_size = 64
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="PhaseAnimation" type="Sprite2D" parent="HUD/HUDRoot" unique_id=793145201]
+position = Vector2(576, 140)
+scale = Vector2(4, 4)
+visible = false
 
 [node name="ShopPanel" type="Panel" parent="HUD/HUDRoot" unique_id=1687302260]
 visible = false
