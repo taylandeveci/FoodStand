@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://df3d3ppeaprx4"]
+
+[ext_resource type="Script" uid="uid://cjghwg7kb0wi0" path="res://scripts/barricade.gd" id="1_k4dkl"]
+[ext_resource type="Texture2D" uid="uid://i8krrf0qp6c3" path="res://assets/Sprite-0008.png" id="2_wwsqi"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_pt713"]
+size = Vector2(28.666668, 34.666668)
+
+[node name="Barricade" type="StaticBody2D" unique_id=607943857]
+scale = Vector2(3, 3)
+script = ExtResource("1_k4dkl")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1496547768]
+texture = ExtResource("2_wwsqi")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=946478768]
+position = Vector2(-0.3333335, -1.333334)
+shape = SubResource("RectangleShape2D_pt713")
+
+[node name="HpLabel" type="Label" parent="." unique_id=808087425]
+offset_left = -19.666668
+offset_top = -18.333334
+offset_right = 21.333332
+offset_bottom = 4.666666
+theme_override_font_sizes/font_size = 9

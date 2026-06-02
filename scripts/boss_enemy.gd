@@ -2,14 +2,14 @@ extends CharacterBody2D
 
 signal died
 
-@export var speed: float = 55.0
-@export var max_hp: int = 3
-@export var contact_damage: int = 1
-@export var attack_interval: float = 1.0
+@export var speed: float = 30.0
+@export var max_hp: int = 20
+@export var contact_damage: int = 3
+@export var attack_interval: float = 0.9
 @export var hurt_duration: float = 0.25
-@export var aggro_range: float = 70.0
-@export var attack_range: float = 36.0
-@export var coin_drop: int = 1
+@export var aggro_range: float = 100.0
+@export var attack_range: float = 48.0
+@export var coin_drop: int = 7
 
 var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 var current_hp: int = 0
@@ -64,7 +64,7 @@ func _physics_process(delta: float) -> void:
 	var close_enough_to_attack: bool = abs_dx <= attack_range
 
 	if current_target.is_in_group("barricade"):
-		close_enough_to_attack = is_on_wall() or dist <= attack_range + 64.0
+		close_enough_to_attack = is_on_wall() or dist <= attack_range + 72.0
 
 	if not close_enough_to_attack:
 		velocity.x = sign(dx) * speed
@@ -85,7 +85,7 @@ func _physics_process(delta: float) -> void:
 func get_priority_barricade() -> Node2D:
 	var barricades = get_tree().get_nodes_in_group("barricade")
 	var best_barricade: Node2D = null
-	var best_distance: float = 220.0
+	var best_distance: float = 260.0
 
 	for barricade in barricades:
 		if not barricade is Node2D:

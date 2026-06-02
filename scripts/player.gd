@@ -306,6 +306,17 @@ func _on_down_timer_timeout() -> void:
 	health_changed.emit(current_health, max_health)
 	recovered.emit()
 
+func heal(amount: int) -> bool:
+	if current_health <= 0:
+		return false
+
+	if current_health >= max_health:
+		return false
+
+	current_health = min(current_health + amount, max_health)
+	health_changed.emit(current_health, max_health)
+	return true
+
 func can_be_targeted() -> bool:
 	if is_down:
 		return false

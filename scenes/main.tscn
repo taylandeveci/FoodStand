@@ -11,7 +11,10 @@
 [ext_resource type="Texture2D" uid="uid://bo31hl8mkni4v" path="res://assets/character/greenbar (3).png" id="5_og1vs"]
 [ext_resource type="Texture2D" uid="uid://clecr85jlac7b" path="res://assets/character/coin1.png" id="5_pm3ni"]
 [ext_resource type="Texture2D" uid="uid://dx08wvewj4rbv" path="res://assets/character/greenbar (2).png" id="6_2wyq8"]
+[ext_resource type="PackedScene" uid="uid://c71lympgob8er" path="res://scenes/thief_enemy.tscn" id="6_y6deb"]
 [ext_resource type="Texture2D" uid="uid://d1vflagvnukt1" path="res://assets/tileset/NightBackground.png" id="7_kmb1v"]
+[ext_resource type="PackedScene" uid="uid://np2r88sv8hqk" path="res://scenes/BossEnemy.tscn" id="7_og1vs"]
+[ext_resource type="PackedScene" uid="uid://df3d3ppeaprx4" path="res://scenes/barricade.tscn" id="8_2wyq8"]
 [ext_resource type="Script" uid="uid://dll113u7ivrrk" path="res://scripts/player.gd" id="9_5q0nq"]
 [ext_resource type="Texture2D" uid="uid://cdony0xwr04eh" path="res://assets/character/char_main_punch1.png" id="12_pm3ni"]
 [ext_resource type="Texture2D" uid="uid://gkf0uopmtwvb" path="res://assets/character/adventurer-hurt-00.png" id="14_tel4y"]
@@ -991,7 +994,10 @@ trash_scene = ExtResource("2_ee4r6")
 customer_scene = ExtResource("3_vxglm")
 enemy_scene = ExtResource("4_2f3dj")
 tank_scene = ExtResource("5_dgi5k")
-max_trash_count = 1
+thief_scene = ExtResource("6_y6deb")
+boss_scene = ExtResource("7_og1vs")
+barricade_scene = ExtResource("8_2wyq8")
+max_trash_count = 7
 
 [node name="NightBackground" type="Sprite2D" parent="." unique_id=1738108801]
 position = Vector2(-2.0563602e-05, -7.4999876)
@@ -1013,6 +1019,16 @@ position = Vector2(-202, -316)
 scale = Vector2(2, 2)
 tile_map_data = PackedByteArray("AAAjAAwAAAANAAIAAADr/wwAAAANAAIAABDc/wwAAAANAAIAABAJABEAAAAIAAAAAAAJABIAAAAIAAEAAAAKABEAAAAJAAAAAAAKABIAAAAJAAEAAAAKAA0AAAAMAAIAAAAKAA4AAAAMAAMAAAALAA0AAAANAAIAAAALAA4AAAANAAMAAAALAA8AAAANAAQAAAALABAAAAANAAUAAAALABEAAAANAAYAAAALABIAAAANAAcAAAAUAA0AAAAMAAIAAAAUAA4AAAAMAAMAAAAVAA0AAAANAAIAAAAVAA4AAAANAAMAAAAVAA8AAAANAAQAAAAVABAAAAANAAUAAAAVABEAAAANAAYAAAAVABIAAAANAAcAAAD3/w4AAAAMAAMAABAAAA4AAAAMAAMAABD9/w0AAAAMAAIAAAD9/w4AAAAMAAMAAAD+/w0AAAANAAIAAAD+/w4AAAANAAMAAAD+/w8AAAANAAQAAAD+/xAAAAANAAUAAAD+/xEAAAANAAYAAAD+/xIAAAANAAcAAAD0/w0AAAAMAAIAAAD0/w4AAAAMAAMAAAD1/w0AAAANAAIAAAD1/w4AAAANAAMAAAD1/w8AAAANAAQAAAD1/xAAAAANAAUAAAD1/xEAAAANAAYAAAD1/xIAAAANAAcAAAA=")
 tile_set = SubResource("TileSet_dgi5k")
+
+[node name="BarricadePoints" type="Node2D" parent="." unique_id=1627918929]
+
+[node name="BarricadePointLeft" type="Marker2D" parent="BarricadePoints" unique_id=321462585]
+position = Vector2(-345, 226)
+
+[node name="BarricadePointRight" type="Marker2D" parent="BarricadePoints" unique_id=1610221371]
+position = Vector2(279, 245)
+
+[node name="BarricadeContainer" type="Node2D" parent="." unique_id=958729862]
 
 [node name="TrashPoints" type="Node2D" parent="." unique_id=265943122]
 
@@ -1255,7 +1271,6 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="ShopPanel" type="Panel" parent="HUD/HUDRoot" unique_id=1687302260]
-visible = false
 layout_mode = 0
 offset_left = 240.0
 offset_top = 295.0
@@ -1264,9 +1279,9 @@ offset_bottom = 637.0
 
 [node name="ShopTitleLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=383066355]
 layout_mode = 0
-offset_left = 20.0
+offset_left = 4.0
 offset_top = 4.0
-offset_right = 98.0
+offset_right = 82.0
 offset_bottom = 27.0
 text = "Shop"
 
@@ -1280,18 +1295,41 @@ text = "Money: 0"
 
 [node name="ShopModeLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=659282147]
 layout_mode = 0
-offset_left = 293.0
-offset_top = 5.0
-offset_right = 401.0
-offset_bottom = 28.0
+offset_left = 3.0
+offset_top = 28.0
+offset_right = 111.0
+offset_bottom = 51.0
 text = "Day Upgrades"
+
+[node name="MarketTypeLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=343512933]
+layout_mode = 0
+offset_left = 315.0
+offset_top = 3.0
+offset_right = 399.0
+offset_bottom = 26.0
+text = "UPGRADES"
+
+[node name="InventoryLabel" type="Label" parent="HUD/HUDRoot/ShopPanel" unique_id=2066823456]
+layout_mode = 0
+offset_left = 177.0
+offset_top = 308.0
+offset_right = 217.0
+offset_bottom = 331.0
+
+[node name="SwitchMarketButton" type="Button" parent="HUD/HUDRoot/ShopPanel" unique_id=102159657]
+layout_mode = 0
+offset_left = 9.0
+offset_top = 295.0
+offset_right = 128.0
+offset_bottom = 326.0
+text = "Switch Market"
 
 [node name="UpgradeList" type="VBoxContainer" parent="HUD/HUDRoot/ShopPanel" unique_id=1238476555]
 layout_mode = 0
-offset_left = 278.0
-offset_top = 100.0
-offset_right = 366.0
-offset_bottom = 201.0
+offset_left = 327.0
+offset_top = 78.0
+offset_right = 415.0
+offset_bottom = 214.0
 
 [node name="UpgradeButton1" type="Button" parent="HUD/HUDRoot/ShopPanel/UpgradeList" unique_id=100574059]
 layout_mode = 2
@@ -1305,13 +1343,45 @@ text = "Upgrade 2"
 layout_mode = 2
 text = "Upgrade 3"
 
+[node name="UpgradeButton4" type="Button" parent="HUD/HUDRoot/ShopPanel/UpgradeList" unique_id=165234090]
+layout_mode = 2
+text = "Upgrade 3"
+
 [node name="ContinueButton" type="Button" parent="HUD/HUDRoot/ShopPanel" unique_id=444386675]
 layout_mode = 0
-offset_left = 642.0
-offset_top = 303.0
-offset_right = 721.0
-offset_bottom = 334.0
+offset_left = 631.0
+offset_top = 294.0
+offset_right = 710.0
+offset_bottom = 325.0
 text = "Continue"
+
+[node name="SurvivalBar" type="Panel" parent="HUD/HUDRoot" unique_id=241584772]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="HUD/HUDRoot/SurvivalBar" unique_id=1213380666]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="MedkitLabel" type="Label" parent="HUD/HUDRoot/SurvivalBar/HBoxContainer" unique_id=842422148]
+layout_mode = 2
+text = "Medkit: 0"
+
+[node name="RepairLabel" type="Label" parent="HUD/HUDRoot/SurvivalBar/HBoxContainer" unique_id=703397243]
+layout_mode = 2
+text = "Repair: 0"
+
+[node name="BarricadeLabel" type="Label" parent="HUD/HUDRoot/SurvivalBar/HBoxContainer" unique_id=1102450967]
+layout_mode = 2
+text = "Barricade: 0"
+
+[node name="BarricadePromptLabel" type="Label" parent="HUD/HUDRoot" unique_id=747429627]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "Press B to place Barricade"
 
 [node name="LeftWall" type="StaticBody2D" parent="." unique_id=1686937118]
 position = Vector2(-639, 272)

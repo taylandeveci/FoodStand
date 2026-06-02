@@ -2,24 +2,27 @@ extends CharacterBody2D
 
 signal died
 
-@export var speed: float = 55.0
-@export var max_hp: int = 3
-@export var contact_damage: int = 1
-@export var attack_interval: float = 1.0
-@export var hurt_duration: float = 0.25
-@export var aggro_range: float = 70.0
-@export var attack_range: float = 36.0
-@export var coin_drop: int = 1
+@export var speed: float = 90.0
+@export var escape_speed: float = 130.0
+@export var max_hp: int = 2
+@export var attack_interval: float = 0.8
+@export var hurt_duration: float = 0.2
+@export var attack_range: float = 34.0
+@export var steal_amount: int = 4
+@export var coin_drop: int = 3
 
 var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 var current_hp: int = 0
 
 var stand_ref: Node2D = null
-var player_ref: Node2D = null
 var current_target: Node2D = null
+var player_ref: Node2D = null
 
 var is_dead: bool = false
 var is_hurt: bool = false
+var has_stolen: bool = false
+var escape_direction: int = 1
+
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var attack_timer: Timer = $AttackTimer
@@ -29,12 +32,16 @@ func _ready() -> void:
 	add_to_group("enemy")
 
 	stand_ref = get_tree().get_first_node_in_group("Stand")
-	player_ref = get_tree().get_first_node_in_group("player")
 
 	attack_timer.one_shot = false
 	attack_timer.autostart = false
 	attack_timer.wait_time = attack_interval
 	attack_timer.timeout.connect(_on_attack_timer_timeout)
+
+	if stand_ref and global_position.x < stand_ref.global_position.x:
+		escape_direction = -1
+	else:
+		escape_direction = 1
 
 	play_idle()
 
@@ -47,6 +54,16 @@ func _physics_process(delta: float) -> void:
 
 	if is_hurt:
 		move_and_slide()
+		return
+
+	if has_stolen:
+		velocity.x = escape_direction * escape_speed
+		sprite.flip_h = velocity.x < 0.0
+		move_and_slide()
+		play_walk()
+
+		if absf(global_position.x - stand_ref.global_position.x) > 1200.0:
+			queue_free()
 		return
 
 	choose_target()
@@ -65,6 +82,8 @@ func _physics_process(delta: float) -> void:
 
 	if current_target.is_in_group("barricade"):
 		close_enough_to_attack = is_on_wall() or dist <= attack_range + 64.0
+	else:
+		close_enough_to_attack = dist <= attack_range + 20.0
 
 	if not close_enough_to_attack:
 		velocity.x = sign(dx) * speed
@@ -108,37 +127,6 @@ func choose_target() -> void:
 
 	current_target = stand_ref
 
-	if player_ref == null or not is_instance_valid(player_ref):
-		return
-
-	var player_targetable: bool = false
-	if player_ref.has_method("can_be_targeted"):
-		player_targetable = bool(player_ref.call("can_be_targeted"))
-
-	if not player_targetable:
-		return
-
-	if not is_player_between_enemy_and_stand():
-		return
-
-	var player_dx: float = absf(player_ref.global_position.x - global_position.x)
-	if player_dx <= aggro_range:
-		current_target = player_ref
-
-func is_player_between_enemy_and_stand() -> bool:
-	if stand_ref == null or not is_instance_valid(stand_ref):
-		return false
-	if player_ref == null or not is_instance_valid(player_ref):
-		return false
-
-	var stand_dx: float = stand_ref.global_position.x - global_position.x
-	var player_dx: float = player_ref.global_position.x - global_position.x
-
-	if signf(stand_dx) != signf(player_dx):
-		return false
-
-	return absf(player_dx) < absf(stand_dx)
-
 func _on_attack_timer_timeout() -> void:
 	if is_dead or is_hurt:
 		return
@@ -148,15 +136,24 @@ func _on_attack_timer_timeout() -> void:
 
 	if current_target.is_in_group("barricade"):
 		if current_target.has_method("take_damage"):
-			current_target.take_damage(contact_damage)
+			current_target.take_damage(1)
 		play_attack()
 		return
 
-	var dx: float = absf(current_target.global_position.x - global_position.x)
-	if dx <= attack_range + 4.0:
-		if current_target.has_method("take_damage"):
-			current_target.take_damage(contact_damage)
+	# Standa ulaştıysa para çal
+	if current_target == stand_ref and not has_stolen:
+		steal_from_stand()
 		play_attack()
+
+func steal_from_stand() -> void:
+	has_stolen = true
+
+	var main_node = get_tree().current_scene
+	if main_node and main_node.has_method("lose_money"):
+		main_node.call("lose_money", steal_amount)
+
+	if attack_timer and not attack_timer.is_stopped():
+		attack_timer.stop()
 
 func take_damage(amount: int) -> void:
 	if is_dead:
@@ -212,3 +209,11 @@ func play_attack() -> void:
 
 func get_kill_reward() -> int:
 	return coin_drop
+
+func did_steal_money() -> bool:
+	return has_stolen
+
+func get_stolen_amount() -> int:
+	if has_stolen:
+		return steal_amount
+	return 0
