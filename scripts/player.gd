@@ -66,6 +66,7 @@ var walk_audio_active: bool = false
 @onready var down_timer: Timer = $DownTimer
 @onready var hurt_timer: Timer = $HurtTimer
 @onready var camera: Camera2D = $Camera2D
+@onready var skill_1_smoke_effect: AnimatedSprite2D = $Skill1SmokeEffect
 
 func _ready() -> void:
 	add_to_group("player")
@@ -96,6 +97,10 @@ func _ready() -> void:
 	camera.offset = Vector2.ZERO
 
 	health_changed.emit(current_health, max_health)
+	
+	if skill_1_smoke_effect:
+		skill_1_smoke_effect.visible = false
+		skill_1_smoke_effect.animation_finished.connect(_on_skill_1_smoke_effect_animation_finished)
 
 func setup_punch_hit_sfx() -> void:
 	punch_hit_sfx_player = AudioStreamPlayer.new()
@@ -307,6 +312,7 @@ func use_skill_1() -> void:
 	skill_used.emit(skill_1_cooldown)
 
 	play_skill()
+	play_skill_1_smoke_effect()
 	apply_hot_water_splash()
 
 func apply_hot_water_splash() -> void:
@@ -505,3 +511,25 @@ func play_dash() -> void:
 func play_skill() -> void:
 	if sprite.sprite_frames.has_animation("attack"):
 		sprite.play("attack")
+
+func play_skill_1_smoke_effect() -> void:
+	if skill_1_smoke_effect == null:
+		return
+
+	skill_1_smoke_effect.visible = true
+
+	if facing == 1:
+		skill_1_smoke_effect.position = Vector2(20, 5)
+		skill_1_smoke_effect.flip_h = false
+	else:
+		skill_1_smoke_effect.position = Vector2(-20, 5)
+		skill_1_smoke_effect.flip_h = true
+
+	skill_1_smoke_effect.play("smoke")
+	
+func _on_skill_1_smoke_effect_animation_finished() -> void:
+	if skill_1_smoke_effect == null:
+		return
+
+	skill_1_smoke_effect.stop()
+	skill_1_smoke_effect.visible = false

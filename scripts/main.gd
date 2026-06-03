@@ -1877,3 +1877,33 @@ func sync_food_cart_health_display(current_hp: int, max_hp: int, emit_warning: b
 
 	if stand_hp_label:
 		stand_hp_label.text = ""
+
+
+func toggle_pause_menu() -> void:
+	if pause_panel == null:
+		return
+
+	var new_paused_state := not get_tree().paused
+	get_tree().paused = new_paused_state
+	
+	pause_panel.visible = new_paused_state
+	pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	
+	if new_paused_state:
+		pause_panel.show()
+		pause_panel.move_to_front()
+
+
+func _on_pause_continue_pressed() -> void:
+	get_tree().paused = false
+
+	if pause_panel:
+		pause_panel.visible = false
+
+
+func _on_pause_main_menu_pressed() -> void:
+	RunManager.save_run()
+	RunManager.save_meta()
+
+	get_tree().paused = false
+	get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
