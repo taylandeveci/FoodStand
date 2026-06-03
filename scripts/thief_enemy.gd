@@ -59,11 +59,17 @@ func _physics_process(delta: float) -> void:
 	if has_stolen:
 		velocity.x = escape_direction * escape_speed
 		sprite.flip_h = velocity.x < 0.0
-		move_and_slide()
+
+		# Kaçarken duvarlara takılmasın diye direkt pozisyonla kaçırıyoruz
+		global_position.x += velocity.x * delta
+
 		play_walk()
 
-		if absf(global_position.x - stand_ref.global_position.x) > 1200.0:
+		var screen_width = DisplayServer.window_get_size().x
+
+		if global_position.x < -200 or global_position.x > screen_width + 200:
 			queue_free()
+
 		return
 
 	choose_target()

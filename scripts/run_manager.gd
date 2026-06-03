@@ -1,10 +1,12 @@
 extends Node
 
 const DISTRICT_COUNT: int = 5
-const DAYS_PER_DISTRICT: int = 1
+const DAYS_PER_DISTRICT: int = 7
 
 const SAVE_META_PATH := "user://save_meta.cfg"
 const MAX_SAVE_SLOTS: int = 3
+
+const RECIPE_FONT := preload("res://Fonts/ThaleahFat.ttf")
 
 var active_save_slot: int = 1
 

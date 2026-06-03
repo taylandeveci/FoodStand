@@ -4,9 +4,13 @@
 [ext_resource type="FontFile" uid="uid://d5vrfcakc278" path="res://Fonts/ThaleahFat.ttf" id="2_wu84c"]
 [ext_resource type="AudioStream" uid="uid://cuc12tdr1x2do" path="res://White Sands Day Night.mp3" id="4_wu84c"]
 [ext_resource type="Script" uid="uid://ctisnwwouusdr" path="res://scripts/music_h_slider.gd" id="5_8ln24"]
+[ext_resource type="Texture2D" uid="uid://dejwatlm5r52u" path="res://assets/Keyboard Letters and Symbols.png" id="5_rtw2f"]
+[ext_resource type="Texture2D" uid="uid://cqbr26lmwsg7x" path="res://assets/Keyboard Extras.png" id="6_rtw2f"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wu84c"]
 bg_color = Color(0.74509805, 0.5686275, 0.21568628, 0.8784314)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_wu84c"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vue75"]
 bg_color = Color(0.71966445, 0.55957043, 0.16583875, 1)
@@ -524,6 +528,68 @@ thickness = 6
 color = Color(0.827451, 0.64705884, 0.12156863, 1)
 thickness = 6
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_oa1go"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(0, 32.538925, 15.897644, 15.50193)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tbmy8"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(48.017914, 32.10574, 15.145306, 15.963074)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jk1qb"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(32.420372, 1.1162796, 30.763893, 14.829773)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5dd4i"]
+atlas = ExtResource("6_rtw2f")
+region = Rect2(1.0644379, 17.181108, 30.2906, 14.687723)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rtw2f"]
+atlas = ExtResource("6_rtw2f")
+region = Rect2(63.84027, 33.088837, 33.130356, 14.198723)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lgwnu"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(63.89722, 32.354736, 15.934124, 15.026779)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_flqon"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(112.42647, 33.308846, 14.500214, 13.567665)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7b55j"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(16.057796, 33.29063, 15.056496, 14.198719)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5pajh"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(16.114967, 65.2191, 15.056252, 13.856186)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rcqid"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(0.2495575, 66.01048, 14.514248, 13.252136)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_1ajci"]
+atlas = ExtResource("6_rtw2f")
+region = Rect2(38.3784, 1.813057, 20.193733, 13.725428)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_8ln24"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_rtw2f"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_jk1qb"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_oa1go"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_tbmy8"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_5dd4i"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_lgwnu"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_flqon"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_rcqid"]
+
 [node name="MainMenu" type="Control" unique_id=1084114664]
 layout_mode = 3
 anchors_preset = 15
@@ -541,6 +607,25 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_wu84c")
+
+[node name="HowToPlay" type="Button" parent="Panel" unique_id=215749981]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -341.0
+offset_top = -58.0
+offset_right = -159.0
+offset_bottom = -22.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.0093103545, 0.0093103545, 0.0093103545, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 30
+theme_override_styles/normal = SubResource("StyleBoxEmpty_wu84c")
+text = "How To Play ?"
 
 [node name="Label" type="Label" parent="." unique_id=2081923741]
 layout_mode = 1
@@ -789,8 +874,9 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -50.25
-offset_top = -51.0
+offset_top = -58.0
 offset_right = 64.0
+offset_bottom = -7.0
 grow_horizontal = 2
 grow_vertical = 0
 size_flags_vertical = 3
@@ -800,6 +886,248 @@ theme_override_font_sizes/font_size = 28
 theme_override_styles/normal = SubResource("StyleBoxFlat_vue75")
 text = "Back
 "
+icon_alignment = 1
+
+[node name="HowToPlayPanel" type="Panel" parent="." unique_id=964930331]
+layout_mode = 0
+offset_left = 338.0
+offset_top = 193.0
+offset_right = 936.0
+offset_bottom = 527.0
+
+[node name="Page1" type="Panel" parent="HowToPlayPanel" unique_id=548724491]
+layout_mode = 0
+offset_right = 598.0
+offset_bottom = 334.0
+
+[node name="TutorialText" type="Label" parent="HowToPlayPanel/Page1" unique_id=620338407]
+layout_mode = 0
+offset_left = 1.0
+offset_top = -1.0
+offset_right = 597.0
+offset_bottom = 335.0
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 16
+text = "WELCOME TO FOOD STAND
+
+• CLEAN THE STREET DURING DAYTIME
+TO EARN EXTRA MONEY AND APPEAL.
+
+• SERVE CUSTOMERS QUICKLY
+WITH THE CORRECT FOOD COMBO.
+
+• PERFECT TIMING GIVES
+MORE MONEY AND BETTER REWARDS.
+
+• SURVIVE THE NIGHT
+AND PROTECT YOUR FOOD STAND
+FROM THIEVES.
+
+• BUY UPGRADES AND ITEMS
+TO REACH THE NEXT DISTRICT."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Page2" type="Panel" parent="HowToPlayPanel" unique_id=1491718892]
+layout_mode = 0
+offset_right = 598.0
+offset_bottom = 334.0
+
+[node name="ControlsContainer" type="VBoxContainer" parent="HowToPlayPanel/Page2" unique_id=2026966062]
+layout_mode = 0
+offset_right = 600.0
+offset_bottom = 333.0
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="MoveRow" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=1845391622]
+layout_mode = 2
+alignment = 1
+
+[node name="AKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/MoveRow" unique_id=75166502]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_oa1go")
+expand_mode = 3
+
+[node name="DKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/MoveRow" unique_id=890704757]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_tbmy8")
+expand_mode = 3
+
+[node name="OrLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/MoveRow" unique_id=807449488]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 22
+text = "OR"
+
+[node name="ArrowsKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/MoveRow" unique_id=810082072]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_jk1qb")
+expand_mode = 3
+
+[node name="MoveLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/MoveRow" unique_id=506264092]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 22
+text = "move"
+
+[node name="SprintRow" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=1849488451]
+layout_mode = 2
+alignment = 1
+
+[node name="ShiftKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/SprintRow" unique_id=375057358]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_5dd4i")
+expand_mode = 3
+
+[node name="SprintLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/SprintRow" unique_id=1791241742]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 22
+text = "dash"
+
+[node name="JumpRow" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=841213998]
+layout_mode = 2
+alignment = 1
+
+[node name="SpaceKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/JumpRow" unique_id=1252460790]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_rtw2f")
+expand_mode = 3
+
+[node name="JumpLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/JumpRow" unique_id=1388531470]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 22
+text = "jump"
+
+[node name="InteractRow" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=1266036085]
+layout_mode = 2
+alignment = 1
+
+[node name="EKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/InteractRow" unique_id=2136978045]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_lgwnu")
+expand_mode = 3
+
+[node name="InteractLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/InteractRow" unique_id=2100001648]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 20
+text = "interact/collect/serve"
+
+[node name="MedkitRow" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=740044364]
+layout_mode = 2
+alignment = 1
+
+[node name="HKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/MedkitRow" unique_id=1159941703]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_flqon")
+expand_mode = 3
+
+[node name="BKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/MedkitRow" unique_id=257487455]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_7b55j")
+expand_mode = 3
+
+[node name="RKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/MedkitRow" unique_id=2137870271]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_5pajh")
+expand_mode = 3
+
+[node name="MedkitLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/MedkitRow" unique_id=1499377371]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 20
+text = "medkit/barricade/repairkit"
+
+[node name="Skill" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=1386293279]
+layout_mode = 2
+alignment = 1
+
+[node name="QKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/Skill" unique_id=120737035]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_rcqid")
+expand_mode = 3
+
+[node name="QLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/Skill" unique_id=1751733842]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 20
+text = "use skill"
+
+[node name="PauseRow" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=477792812]
+layout_mode = 2
+alignment = 1
+
+[node name="EscKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/PauseRow" unique_id=1272951246]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_1ajci")
+expand_mode = 3
+
+[node name="PauseLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/PauseRow" unique_id=1361345242]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 20
+text = "Pause Game"
+
+[node name="LeftArrowButton" type="Button" parent="HowToPlayPanel" unique_id=281833136]
+layout_mode = 0
+offset_top = 298.0
+offset_right = 45.0
+offset_bottom = 331.0
+theme_override_colors/font_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 27
+theme_override_styles/normal = SubResource("StyleBoxEmpty_8ln24")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_rtw2f")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_jk1qb")
+text = "<"
+icon_alignment = 1
+
+[node name="RightArrowButton" type="Button" parent="HowToPlayPanel" unique_id=2028698570]
+layout_mode = 0
+offset_left = 549.0
+offset_top = 297.0
+offset_right = 597.0
+offset_bottom = 333.0
+theme_override_colors/font_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 27
+theme_override_styles/normal = SubResource("StyleBoxEmpty_oa1go")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_tbmy8")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_5dd4i")
+text = ">"
+icon_alignment = 1
+
+[node name="CloseButton" type="Button" parent="HowToPlayPanel" unique_id=1848676824]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -29.0
+offset_right = -11.0
+offset_bottom = 27.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+theme_override_fonts/font = ExtResource("2_wu84c")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxEmpty_lgwnu")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_flqon")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_rcqid")
+text = "x"
 icon_alignment = 1
 
 [connection signal="pressed" from="MainButtons/Button" to="." method="_on_start_pressed"]
