@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d1vflagvnukt1"
-path="res://.godot/imported/NightBackground.png-e150797618901846a746283bf8a9bc2a.ctex"
+uid="uid://d1ry1y2101x2u"
+path="res://.godot/imported/Destructible Objects Sprite Sheet.png-791b43589c5630aa8274234d063dbde8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/tileset/NightBackground.png"
-dest_files=["res://.godot/imported/NightBackground.png-e150797618901846a746283bf8a9bc2a.ctex"]
+source_file="res://assets/character/Destructible Objects Sprite Sheet.png"
+dest_files=["res://.godot/imported/Destructible Objects Sprite Sheet.png-791b43589c5630aa8274234d063dbde8.ctex"]
 
 [params]
 
