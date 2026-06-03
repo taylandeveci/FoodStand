@@ -601,7 +601,7 @@ text = "Exit
 
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=1954249814]
 stream = ExtResource("4_wu84c")
-autoplay = true
+autoplay = false
 bus = &"Music"
 
 [node name="Options" type="Panel" parent="." unique_id=1433779553]

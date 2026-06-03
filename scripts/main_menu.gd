@@ -7,6 +7,7 @@ extends Control
 const DISTRICT_SELECT_SCENE_PATH := "res://scenes/district_select.tscn"
 
 func _ready() -> void:
+	MusicManager.play_intro_music()
 	show_main_menu()
 
 func show_main_menu() -> void:

@@ -519,6 +519,7 @@ func apply_run_upgrades() -> void:
 
 func start_morning_phase() -> void:
 	game_state = GameState.CLEANING
+	MusicManager.play_day_music()
 
 	current_order = ""
 	timing_value = 0.0
@@ -1448,6 +1449,7 @@ func _on_shop_continue_pressed() -> void:
 
 func start_night_phase() -> void:
 	game_state = GameState.NIGHT
+	MusicManager.play_night_music()
 	clear_enemies()
 
 	set_night_background()
