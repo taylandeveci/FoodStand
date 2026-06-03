@@ -1,6 +1,7 @@
 extends Node2D
 
 const MissionPanelScript = preload("res://scripts/mission_panel.gd")
+const RECIPE_FONT := preload("res://Fonts/ThaleahFat.ttf")
 
 const MISSION_COLLECT_TRASH := "collect_trash"
 const MISSION_GO_FOOD_CART := "go_food_cart"
@@ -47,6 +48,7 @@ enum GameState {
 @export var repair_kit_amount: int = 6
 @export var repair_use_distance: float = 110.0
 @export var barricade_place_distance: float = 120.0
+
 
 # --- Müşteri Akış Ayarları ---
 var customers_served_today: int = 0
@@ -182,6 +184,10 @@ const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
 @onready var shop_continue_button: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/ContinueButton") as Button
 @onready var switch_market_button: Button = get_node_or_null("HUD/HUDRoot/ShopPanel/SwitchMarketButton") as Button
 
+@onready var pause_panel: Panel = get_node_or_null("HUD/HUDRoot/PausePanel") as Panel
+@onready var pause_continue_button: Button = get_node_or_null("HUD/HUDRoot/PausePanel/VBoxContainer/ContinueP") as Button
+@onready var pause_main_menu_button: Button = get_node_or_null("HUD/HUDRoot/PausePanel/VBoxContainer/BackToMenu") as Button
+
 var mission_panel = null
 
 func _ready() -> void:
@@ -256,8 +262,28 @@ func _ready() -> void:
 
 	start_morning_phase()
 	update_ui()
+	
+	if pause_panel:
+		pause_panel.visible = false
+	
+	pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	pause_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	if pause_continue_button:
+		pause_continue_button.process_mode = Node.PROCESS_MODE_ALWAYS
+		pause_continue_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		pause_continue_button.pressed.connect(_on_pause_continue_pressed)
+
+	if pause_main_menu_button:
+		pause_main_menu_button.process_mode = Node.PROCESS_MODE_ALWAYS
+		pause_main_menu_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		pause_main_menu_button.pressed.connect(_on_pause_main_menu_pressed)
 
 func _process(delta: float) -> void:
+	if Input.is_action_just_pressed("pause_game"):
+		toggle_pause_menu()
+		return
+		
 	update_food_cart_interaction_enabled()
 	update_phase_animation_anchor()
 
@@ -805,6 +831,17 @@ func activate_front_customer(customer: Node2D) -> void:
 		var left_lbl = active_recipe_book.get_node_or_null("YaziKatmani/LeftLabel") as Label
 		var right_lbl = active_recipe_book.get_node_or_null("YaziKatmani/RightLabel") as Label
 		var yazi_katmani = active_recipe_book.get_node_or_null("YaziKatmani") as Control
+		if left_lbl:
+			left_lbl.add_theme_font_override("font", RunManager.RECIPE_FONT)
+			left_lbl.add_theme_font_size_override("font_size", 20)
+			left_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			left_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+		if right_lbl:
+			right_lbl.add_theme_font_override("font", RunManager.RECIPE_FONT)
+			right_lbl.add_theme_font_size_override("font_size", 20)
+			right_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			right_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 		if left_lbl:
 			left_lbl.text = get_recipe_display_name(current_order)
@@ -1794,3 +1831,32 @@ func update_ui() -> void:
 			RunManager.get_survival_item_count("repair_kit"),
 			RunManager.get_survival_item_count("barricade")
 		)
+
+func toggle_pause_menu() -> void:
+	if pause_panel == null:
+		return
+
+	var new_paused_state := not get_tree().paused
+	get_tree().paused = new_paused_state
+	
+	pause_panel.visible = new_paused_state
+	pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	
+	if new_paused_state:
+		pause_panel.show()
+		pause_panel.move_to_front()
+
+
+func _on_pause_continue_pressed() -> void:
+	get_tree().paused = false
+
+	if pause_panel:
+		pause_panel.visible = false
+
+
+func _on_pause_main_menu_pressed() -> void:
+	RunManager.save_run()
+	RunManager.save_meta()
+
+	get_tree().paused = false
+	get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)

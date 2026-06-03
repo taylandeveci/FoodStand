@@ -16,7 +16,7 @@
 [ext_resource type="PackedScene" uid="uid://np2r88sv8hqk" path="res://scenes/BossEnemy.tscn" id="7_og1vs"]
 [ext_resource type="PackedScene" uid="uid://df3d3ppeaprx4" path="res://scenes/barricade.tscn" id="8_2wyq8"]
 [ext_resource type="Script" uid="uid://dll113u7ivrrk" path="res://scripts/player.gd" id="9_5q0nq"]
-[ext_resource type="PackedScene" path="res://scenes/recipe_book.tscn" id="9_vxglm"]
+[ext_resource type="PackedScene" uid="uid://thgpg4vudcai" path="res://scenes/recipe_book.tscn" id="9_vxglm"]
 [ext_resource type="Texture2D" uid="uid://ll1ixrtns7yh" path="res://assets/tiles/tile_ground/tile_ground2.png" id="9_y6deb"]
 [ext_resource type="Texture2D" uid="uid://cdony0xwr04eh" path="res://assets/character/char_main_punch1.png" id="12_pm3ni"]
 [ext_resource type="Texture2D" uid="uid://co3iyj7jsj2o6" path="res://assets/character/char_main/char_main_hurt/char_main_hurt1.png" id="14_jscy8"]
@@ -1055,6 +1055,24 @@ shadow_size = 5
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2wyq8"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yq6so"]
+bg_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fv21b"]
+bg_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0.72156864, 0.56078434, 0.16470589, 1)
+shadow_size = 5
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wsu2k"]
 size = Vector2(9, 203)
 
@@ -1527,6 +1545,40 @@ offset_right = 40.0
 offset_bottom = 23.0
 theme_override_fonts/font = ExtResource("30_5q0nq")
 text = "Press B to place Barricade"
+
+[node name="PausePanel" type="Panel" parent="HUD/HUDRoot" unique_id=1401541577]
+process_mode = 3
+visible = false
+layout_mode = 0
+offset_left = 430.0
+offset_top = 230.0
+offset_right = 850.0
+offset_bottom = 433.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HUD/HUDRoot/PausePanel" unique_id=466574335]
+process_mode = 3
+layout_mode = 0
+offset_left = 60.0
+offset_top = 70.0
+offset_right = 360.0
+offset_bottom = 185.0
+theme_override_constants/separation = 15
+
+[node name="ContinueP" type="Button" parent="HUD/HUDRoot/PausePanel/VBoxContainer" unique_id=604199071]
+process_mode = 3
+layout_mode = 2
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_yq6so")
+text = "Continue"
+
+[node name="BackToMenu" type="Button" parent="HUD/HUDRoot/PausePanel/VBoxContainer" unique_id=1349425017]
+process_mode = 3
+layout_mode = 2
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_fv21b")
+text = "Back to Main Menu"
 
 [node name="LeftWall" type="StaticBody2D" parent="." unique_id=1686937118]
 position = Vector2(-639, 272)
