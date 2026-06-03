@@ -25,6 +25,7 @@ func _ready() -> void:
 	patience = max_patience
 	update_patience_bar_frame()
 	patience_bar.visible = false
+	hide_order()
 	play_idle()
 
 func _process(delta: float) -> void:
@@ -65,6 +66,7 @@ func _process(delta: float) -> void:
 			arrived.emit()
 			play_idle()
 			start_patience()
+			show_order()
 
 func update_patience(delta: float) -> void:
 	if not patience_active:
