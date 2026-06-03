@@ -88,7 +88,7 @@ func get_priority_barricade() -> Node2D:
 	var best_distance: float = 240.0
 
 	for barricade in barricades:
-		if not barricade is Node2D:
+		if not (barricade is Node2D):
 			continue
 
 		var barricade_node: Node2D = barricade

@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://4kgord2irnlu" path="res://assets/character/char_customers/char_customer1/char_customer1_idle/char_customer1_idle.png" id="2_8qg4y"]
 [ext_resource type="Texture2D" uid="uid://c2wwthxivbn5e" path="res://assets/character/char_customers/char_customer1/char_customer1_walk/char_customer1_walk.png" id="3_rjbu2"]
 [ext_resource type="Texture2D" uid="uid://cblme7rdxjy13" path="res://assets/props/props_patiencebar/prop_patiencebar.png" id="4_patience"]
+[ext_resource type="Texture2D" uid="uid://bo0l01etjqwcg" path="res://assets/konusmabalon/Chat-1.png" id="4_qqxhk"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_8qg4y"]
 atlas = ExtResource("2_8qg4y")
@@ -158,6 +159,12 @@ animations = [{
 "speed": 10.0
 }]
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_846g6"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+
 [node name="Customer" type="Node2D" unique_id=608039442]
 scale = Vector2(1.5, 1.5)
 script = ExtResource("1_xss0h")
@@ -168,15 +175,40 @@ scale = Vector2(1.3828125, 1.4804168)
 sprite_frames = SubResource("SpriteFrames_pm32s")
 animation = &"walk"
 
-[node name="OrderBubble" type="Node2D" parent="." unique_id=1512345183]
+[node name="OrderBubble" type="NinePatchRect" parent="." unique_id=1658050221]
+z_index = 4
+custom_minimum_size = Vector2(60, 40)
+offset_left = 51.333336
+offset_top = -36.666668
+offset_right = 111.333336
+offset_bottom = 3.333332
+rotation = -0.0024000572
+scale = Vector2(-1, 1)
+texture = ExtResource("4_qqxhk")
+region_rect = Rect2(507, 16, 53, 26)
+patch_margin_left = 6
+patch_margin_top = 6
+patch_margin_right = 6
+patch_margin_bottom = 6
 
 [node name="Label" type="Label" parent="OrderBubble" unique_id=646064058]
-offset_left = -13.0
-offset_top = -53.0
-offset_right = 27.0
-offset_bottom = -30.0
-theme_override_colors/font_color = Color(0.7844819, 0.7826885, 7.70092e-07, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+z_index = 5
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 61.31556
+offset_top = -7.480514
+offset_right = 61.271873
+offset_bottom = -12.480515
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(-1, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxEmpty_846g6")
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="PatienceBar" type="Sprite2D" parent="." unique_id=1443015108]
 visible = false
@@ -185,3 +217,4 @@ position = Vector2(-15.333334, 26)
 texture = ExtResource("4_patience")
 centered = false
 hframes = 18
+frame = 0
