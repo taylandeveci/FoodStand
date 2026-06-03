@@ -102,7 +102,10 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.x = 0.0
 		move_and_slide()
-		play_attack()
+		if current_target == stand_ref and not has_stolen:
+			play_idle()
+		else:
+			play_attack()
 
 		if attack_timer.is_stopped():
 			attack_timer.start()
@@ -149,7 +152,7 @@ func _on_attack_timer_timeout() -> void:
 	# Standa ulaştıysa para çal
 	if current_target == stand_ref and not has_stolen:
 		steal_from_stand()
-		play_attack()
+		play_idle()
 
 func steal_from_stand() -> void:
 	has_stolen = true

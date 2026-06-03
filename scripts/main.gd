@@ -5,6 +5,7 @@ const RECIPE_FONT := preload("res://Fonts/ThaleahFat.ttf")
 
 const MISSION_COLLECT_TRASH := "collect_trash"
 const MISSION_GO_FOOD_CART := "go_food_cart"
+const FOOD_TRUCK_HEALTH_ENGINE_WORLD_OFFSET := Vector2(30.0, -118.0)
 
 enum GameState {
 	CLEANING,
@@ -227,6 +228,9 @@ func _ready() -> void:
 	if food_cart and food_cart.has_signal("destroyed"):
 		food_cart.destroyed.connect(_on_food_cart_destroyed)
 
+	if food_cart:
+		sync_food_cart_health_display(food_cart.current_hp, food_cart.max_hp, false)
+
 	night_timer.one_shot = true
 	night_timer.autostart = false
 	night_timer.timeout.connect(_on_night_timer_timeout)
@@ -287,6 +291,7 @@ func _process(delta: float) -> void:
 		
 	update_food_cart_interaction_enabled()
 	update_phase_animation_anchor()
+	update_food_truck_health_engine_anchor()
 
 	if game_state == GameState.SERVING:
 		# SADECE BU KISMI DEĞİŞTİRİYORUZ
@@ -593,17 +598,12 @@ func start_morning_phase() -> void:
 	if service_panel:
 		service_panel.visible = false
 
-	var district_profile: Dictionary = RunManager.get_current_district_profile()
-
 	reset_mission_panel()
 	add_mission(MISSION_COLLECT_TRASH)
 	clear_status()
-	set_result("%s | Day %d / %d | %s" % [
-		RunManager.get_current_district_name(),
-		RunManager.get_current_day(),
-		RunManager.DAYS_PER_DISTRICT,
-		str(district_profile.get("description", ""))
-	])
+	set_result("")
+	if hud and hud.has_method("show_day_banner"):
+		hud.show_day_banner("District %d - Day %d" % [RunManager.current_district + 1, RunManager.get_current_day()])
 
 	if hud and hud.has_method("show_phase_morning_prep"):
 		position_phase_animation_above_food_cart()
@@ -689,7 +689,7 @@ func _check_trash_after_removal() -> void:
 		complete_mission(MISSION_COLLECT_TRASH)
 		add_mission(MISSION_GO_FOOD_CART)
 		clear_status()
-		set_result("Area cleaned!")
+		set_result("")
 
 func _on_food_cart_interacted() -> void:
 	match game_state:
@@ -1544,6 +1544,38 @@ func get_food_cart_phase_animation_screen_position() -> Vector2:
 	var screen_x: float = viewport_size.x * 0.5 + (anchor_world_x - player_camera.global_position.x)
 	return Vector2(screen_x, 92.0)
 
+func update_food_truck_health_engine_anchor() -> void:
+	if hud == null:
+		return
+
+	if not hud.has_method("show_food_truck_health_engine") or not hud.has_method("hide_food_truck_health_engine") or not hud.has_method("set_food_truck_health_engine_position"):
+		return
+
+	if game_state != GameState.NIGHT:
+		hud.call("hide_food_truck_health_engine")
+		return
+
+	hud.call("show_food_truck_health_engine")
+	hud.call("set_food_truck_health_engine_position", get_food_truck_health_engine_screen_position())
+
+func get_food_truck_health_engine_screen_position() -> Vector2:
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var fallback_position := Vector2(viewport_size.x * 0.5, viewport_size.y * 0.5)
+	if food_cart == null or player_camera == null:
+		return fallback_position
+
+	var anchor_world_position: Vector2 = food_cart.global_position + FOOD_TRUCK_HEALTH_ENGINE_WORLD_OFFSET
+	player_camera.force_update_scroll()
+	var camera_zoom := player_camera.zoom
+	var zoom_x: float = max(camera_zoom.x, 0.001)
+	var zoom_y: float = max(camera_zoom.y, 0.001)
+	var screen_center_world: Vector2 = player_camera.get_screen_center_position()
+	var screen_offset := Vector2(
+		(anchor_world_position.x - screen_center_world.x) / zoom_x,
+		(anchor_world_position.y - screen_center_world.y) / zoom_y
+	)
+	return (viewport_size * 0.5) + screen_offset
+
 func _on_enemy_spawn_timer_timeout() -> void:
 	if game_state != GameState.NIGHT:
 		return
@@ -1734,8 +1766,7 @@ func _on_player_recovered() -> void:
 		set_status("You recovered. Defend the stand!")
 
 func _on_food_cart_hp_changed(current_hp: int, max_hp: int) -> void:
-	if stand_hp_label:
-		stand_hp_label.text = "Stand HP: %d / %d" % [current_hp, max_hp]
+	sync_food_cart_health_display(current_hp, max_hp)
 
 func _on_player_health_changed(current_health: int, max_health: int) -> void:
 	if health_bar:
@@ -1820,13 +1851,13 @@ func update_ui() -> void:
 		coin_label.text = "%d" % money
 
 	if appeal_label:
-		appeal_label.text = "Appeal: %d" % local_appeal
+		appeal_label.text = "%d" % local_appeal
 
 	if trash_label:
-		trash_label.text = "Trash Left: %d" % trash_container.get_child_count()
+		trash_label.text = "%d" % trash_container.get_child_count()
 
-	if stand_hp_label and food_cart:
-		stand_hp_label.text = "Stand HP: %d / %d" % [food_cart.current_hp, food_cart.max_hp]
+	if food_cart:
+		sync_food_cart_health_display(food_cart.current_hp, food_cart.max_hp, false)
 
 	if health_bar and player:
 		health_bar.max_value = player.max_health
@@ -1839,31 +1870,10 @@ func update_ui() -> void:
 			RunManager.get_survival_item_count("barricade")
 		)
 
-func toggle_pause_menu() -> void:
-	if pause_panel == null:
+func sync_food_cart_health_display(current_hp: int, max_hp: int, emit_warning: bool = true) -> void:
+	if hud and hud.has_method("update_stand_hp"):
+		hud.update_stand_hp(current_hp, max_hp, emit_warning)
 		return
 
-	var new_paused_state := not get_tree().paused
-	get_tree().paused = new_paused_state
-	
-	pause_panel.visible = new_paused_state
-	pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
-	
-	if new_paused_state:
-		pause_panel.show()
-		pause_panel.move_to_front()
-
-
-func _on_pause_continue_pressed() -> void:
-	get_tree().paused = false
-
-	if pause_panel:
-		pause_panel.visible = false
-
-
-func _on_pause_main_menu_pressed() -> void:
-	RunManager.save_run()
-	RunManager.save_meta()
-
-	get_tree().paused = false
-	get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
+	if stand_hp_label:
+		stand_hp_label.text = ""

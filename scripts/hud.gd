@@ -6,14 +6,28 @@ const PHASE_DAYTIME_FRAMES: int = 30
 const PHASE_NIGHTTIME_FRAMES: int = 30
 const PHASE_ANIMATION_DURATION: float = 4.0
 const PHASE_ANIMATION_END_HOLD: float = 0.32
+const FOOD_TRUCK_HEALTH_ENGINE_SCALE: Vector2 = Vector2(1.2, 1.2)
+const FOOD_TRUCK_HEALTH_ENGINE_FRAME_OFFSETS := [
+	Vector2.ZERO,
+	Vector2.ZERO,
+	Vector2.ZERO,
+	Vector2.ZERO,
+	Vector2.ZERO,
+	Vector2.ZERO,
+]
 
 @onready var hud_root = $HUDRoot
 
-@onready var coin_icon = $HUDRoot/CoinIcon
+@onready var stat_bar_background: TextureRect = $HUDRoot/StatBarBackground
+@onready var coin_icon: TextureRect = $HUDRoot/CoinIcon
+@onready var fist_icon: TextureRect = $HUDRoot/FistIcon
+@onready var trash_icon: TextureRect = $HUDRoot/TrashIcon
 @onready var coin_label: Label = $HUDRoot/CoinLabel
 @onready var appeal_label: Label = $HUDRoot/AppealLabel
 @onready var trash_label: Label = $HUDRoot/TrashLabel
 @onready var health_bar: TextureProgressBar = $HUDRoot/HealthBar
+@onready var day_banner_label: Label = $HUDRoot/DayBannerLabel
+@onready var food_truck_health_engine: Sprite2D = $HUDRoot/FoodTruckHealthEngine
 @onready var status_label: Label = $HUDRoot/StatusLabel
 @onready var result_label: Label = $HUDRoot/ResultLabel
 @onready var stand_hp_label: Label = $HUDRoot/StandHpLabel
@@ -44,6 +58,7 @@ const PHASE_ANIMATION_END_HOLD: float = 0.32
 @onready var continue_button: Button = $HUDRoot/ShopPanel/ContinueButton
 
 var phase_animation_tween: Tween
+var day_banner_tween: Tween
 
 # SURVIVAL BAR
 @onready var survival_bar: Panel = $HUDRoot/SurvivalBar
@@ -64,12 +79,51 @@ func _ready() -> void:
 # -------------------------
 
 func apply_default_layout() -> void:
-	coin_icon.position = Vector2(32, 108)
-	coin_label.position = Vector2(64, 108)
+	if stat_bar_background:
+		stat_bar_background.position = Vector2(0, -15)
+		stat_bar_background.size = Vector2(192, 64)
 
-	appeal_label.position = Vector2(38, 138)
-	trash_label.position = Vector2(38, 168)
-	stand_hp_label.position = Vector2(38, 198)
+	if coin_icon:
+		coin_icon.visible = false
+	if fist_icon:
+		fist_icon.visible = false
+	if trash_icon:
+		trash_icon.visible = false
+
+	coin_label.position = Vector2(34, -5)
+	coin_label.size = Vector2(28, 36)
+	coin_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	coin_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	coin_label.add_theme_font_size_override("font_size", 18)
+	coin_label.add_theme_color_override("font_color", Color(0, 0, 0, 1))
+
+	appeal_label.position = Vector2(98, -5)
+	appeal_label.size = Vector2(28, 36)
+	appeal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	appeal_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	appeal_label.add_theme_font_size_override("font_size", 18)
+	appeal_label.add_theme_color_override("font_color", Color(0, 0, 0, 1))
+
+	if trash_label:
+		trash_label.visible = true
+		trash_label.position = Vector2(162, -5)
+		trash_label.size = Vector2(26, 36)
+		trash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		trash_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		trash_label.add_theme_font_size_override("font_size", 18)
+		trash_label.add_theme_color_override("font_color", Color(0, 0, 0, 1))
+	if health_bar:
+		health_bar.position = Vector2(-22, -80)
+	if day_banner_label:
+		day_banner_label.position = Vector2(-10, 56)
+		day_banner_label.size = Vector2(220, 24)
+		day_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		day_banner_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		day_banner_label.add_theme_font_size_override("font_size", 16)
+		day_banner_label.add_theme_color_override("font_color", Color(0, 0, 0, 1))
+		day_banner_label.visible = false
+	if stand_hp_label:
+		stand_hp_label.visible = false
 
 	status_label.position = Vector2(320, 80)
 	status_label.size = Vector2(600, 90)
@@ -89,6 +143,12 @@ func apply_default_layout() -> void:
 		phase_animation.scale = Vector2(4.0, 4.0)
 		phase_animation.centered = true
 		phase_animation.visible = false
+
+	if food_truck_health_engine:
+		food_truck_health_engine.scale = FOOD_TRUCK_HEALTH_ENGINE_SCALE
+		food_truck_health_engine.centered = true
+		food_truck_health_engine.visible = false
+		set_food_truck_health_engine_frame(0)
 
 	if barricade_prompt_label:
 		barricade_prompt_label.position = Vector2(360, 620)
@@ -114,10 +174,11 @@ func update_coin(amount: int) -> void:
 	coin_label.text = str(amount)
 
 func update_appeal(amount: int) -> void:
-	appeal_label.text = "Appeal: " + str(amount)
+	appeal_label.text = str(amount)
 
 func update_trash(amount: int) -> void:
-	trash_label.text = "Trash Left: " + str(amount)
+	if trash_label:
+		trash_label.text = str(amount)
 
 func update_player_health(current: float, maximum: float) -> void:
 	health_bar.max_value = maximum
@@ -126,11 +187,55 @@ func update_player_health(current: float, maximum: float) -> void:
 	if current <= maximum * 0.25:
 		show_warning("PLAYER LOW HP!")
 
-func update_stand_hp(current: int, maximum: int) -> void:
-	stand_hp_label.text = "Stand HP: " + str(current) + " / " + str(maximum)
+func update_stand_hp(current: int, maximum: int, emit_warning: bool = true) -> void:
+	if stand_hp_label:
+		stand_hp_label.text = ""
+	update_food_truck_health_engine(current, maximum)
 
-	if current <= maximum * 0.25:
+	if emit_warning and maximum > 0 and current <= maximum * 0.25:
 		show_warning("STAND CRITICAL!")
+
+func update_food_truck_health_engine(current: int, maximum: int) -> void:
+	if food_truck_health_engine == null:
+		return
+
+	var frame_count: int = max(food_truck_health_engine.hframes, 1)
+	if frame_count == 1:
+		set_food_truck_health_engine_frame(0)
+		return
+
+	if maximum <= 0:
+		set_food_truck_health_engine_frame(frame_count - 1)
+		return
+
+	var clamped_current: int = clampi(current, 0, maximum)
+	var normalized_damage: float = 1.0 - (float(clamped_current) / float(maximum))
+	var target_frame: int = int(normalized_damage * float(frame_count - 1))
+	set_food_truck_health_engine_frame(clampi(target_frame, 0, frame_count - 1))
+
+func set_food_truck_health_engine_frame(frame_index: int) -> void:
+	if food_truck_health_engine == null:
+		return
+
+	food_truck_health_engine.frame = frame_index
+
+	if frame_index >= 0 and frame_index < FOOD_TRUCK_HEALTH_ENGINE_FRAME_OFFSETS.size():
+		food_truck_health_engine.offset = FOOD_TRUCK_HEALTH_ENGINE_FRAME_OFFSETS[frame_index]
+	else:
+		food_truck_health_engine.offset = Vector2.ZERO
+
+func set_food_truck_health_engine_position(screen_position: Vector2) -> void:
+	if food_truck_health_engine == null:
+		return
+	food_truck_health_engine.position = screen_position
+
+func show_food_truck_health_engine() -> void:
+	if food_truck_health_engine:
+		food_truck_health_engine.visible = true
+
+func hide_food_truck_health_engine() -> void:
+	if food_truck_health_engine:
+		food_truck_health_engine.visible = false
 
 func update_survival_inventory(medkit_count: int, repair_count: int, barricade_count: int) -> void:
 	if medkit_label:
@@ -338,6 +443,37 @@ func _set_phase_animation_progress(progress: float, frame_count: int) -> void:
 func show_phase_morning_prep() -> void:
 	show_phase_animation(PHASE_DAYTIME_TEXTURE, PHASE_DAYTIME_FRAMES)
 
+func show_day_banner(text: String) -> void:
+	if day_banner_label == null:
+		return
+
+	hide_day_banner()
+
+	day_banner_label.text = text
+	day_banner_label.visible = true
+	day_banner_label.modulate.a = 0.0
+
+	var tween := create_tween()
+	day_banner_tween = tween
+	tween.tween_property(day_banner_label, "modulate:a", 1.0, 0.2)
+	tween.tween_interval(2.6)
+	tween.tween_property(day_banner_label, "modulate:a", 0.0, 0.3)
+
+	await tween.finished
+	if day_banner_tween == tween and day_banner_label:
+		day_banner_label.visible = false
+		day_banner_tween = null
+
+func hide_day_banner() -> void:
+	if day_banner_tween:
+		day_banner_tween.kill()
+		day_banner_tween = null
+
+	if day_banner_label:
+		day_banner_label.visible = false
+		day_banner_label.text = ""
+		day_banner_label.modulate.a = 1.0
+
 func show_phase_night_started() -> void:
 	show_phase_animation(PHASE_NIGHTTIME_TEXTURE, PHASE_NIGHTTIME_FRAMES)
 
@@ -397,4 +533,5 @@ func clear_feedback() -> void:
 		phase_label.text = ""
 		phase_label.visible = false
 
+	hide_day_banner()
 	hide_phase_animation()
