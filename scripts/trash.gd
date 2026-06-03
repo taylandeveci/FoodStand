@@ -2,6 +2,8 @@ extends Area2D
 
 signal collected(money_gain: int, appeal_gain: int)
 
+const TRASH_PICKUP_SFX: AudioStream = preload("res://sounds/trashpickup/trashpickup.mp3")
+
 @export var money_reward: int = 1
 @export var appeal_reward: int = 1
 @export var interact_hold_duration: float = 1.0
@@ -52,8 +54,21 @@ func _on_body_exited(body: Node) -> void:
 		hide_interact_prompt()
 
 func collect_trash() -> void:
+	play_trash_pickup_sfx()
 	collected.emit(money_reward, appeal_reward)
 	queue_free()
+
+func play_trash_pickup_sfx() -> void:
+	var scene_root: Node = get_tree().current_scene
+	if scene_root == null:
+		return
+
+	var pickup_sfx_player := AudioStreamPlayer.new()
+	pickup_sfx_player.name = "TrashPickupSfx"
+	pickup_sfx_player.stream = TRASH_PICKUP_SFX
+	scene_root.add_child(pickup_sfx_player)
+	pickup_sfx_player.finished.connect(pickup_sfx_player.queue_free)
+	pickup_sfx_player.play()
 
 func show_interact_idle() -> void:
 	if interact_prompt == null:
