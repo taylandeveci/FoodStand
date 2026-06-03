@@ -1347,6 +1347,8 @@ offset_left = 177.0
 offset_top = 308.0
 offset_right = 217.0
 offset_bottom = 331.0
+theme_override_fonts/font = ExtResource("30_5q0nq")
+theme_override_font_sizes/font_size = 20
 
 [node name="SwitchMarketButton" type="Button" parent="HUD/HUDRoot/ShopPanel" unique_id=102159657]
 layout_mode = 0
