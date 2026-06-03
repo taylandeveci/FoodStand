@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cjghwg7kb0wi0" path="res://scripts/barricade.gd" id="1_k4dkl"]
 [ext_resource type="Texture2D" uid="uid://rjj3yfhi1f6s" path="res://assets/sCrate.png" id="2_wwsqi"]
+[ext_resource type="FontFile" uid="uid://d5vrfcakc278" path="res://Fonts/ThaleahFat.ttf" id="3_pt713"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_pt713"]
 size = Vector2(28.333334, 21.666668)
@@ -19,8 +20,9 @@ position = Vector2(-0.5, 0.8333332)
 shape = SubResource("RectangleShape2D_pt713")
 
 [node name="HpLabel" type="Label" parent="." unique_id=808087425]
-offset_left = -19.666668
-offset_top = -18.333334
-offset_right = 21.333332
-offset_bottom = 4.666666
-theme_override_font_sizes/font_size = 9
+offset_left = -11.666666
+offset_top = -23.0
+offset_right = 11.666668
+offset_bottom = -8.333334
+theme_override_fonts/font = ExtResource("3_pt713")
+theme_override_font_sizes/font_size = 12
