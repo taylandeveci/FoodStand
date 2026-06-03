@@ -2,6 +2,11 @@ extends CharacterBody2D
 
 signal died
 
+const ENEMY_WALK_SFX: AudioStream = preload("res://sounds/enemywalk/enemywalk.mp3")
+const TRUCK_HIT_SFX: AudioStream = preload("res://sounds/metalhit/metalhit.mp3")
+const WALK_STEP_INTERVAL: float = 0.5
+const TRUCK_HIT_VOLUME_DB: float = -6.0
+
 @export var speed: float = 38.0
 @export var max_hp: int = 8
 @export var contact_damage: int = 2
@@ -20,6 +25,10 @@ var current_target: Node2D = null
 
 var is_dead: bool = false
 var is_hurt: bool = false
+var walk_sfx_player: AudioStreamPlayer = null
+var truck_hit_sfx_player: AudioStreamPlayer = null
+var walk_step_time_left: float = 0.0
+var walk_audio_active: bool = false
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var attack_timer: Timer = $AttackTimer
@@ -27,6 +36,8 @@ var is_hurt: bool = false
 func _ready() -> void:
 	current_hp = max_hp
 	add_to_group("enemy")
+	setup_walk_sfx()
+	setup_truck_hit_sfx()
 
 	stand_ref = get_tree().get_first_node_in_group("Stand")
 	player_ref = get_tree().get_first_node_in_group("player")
@@ -46,6 +57,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y += gravity * delta
 
 	if is_hurt:
+		reset_walk_sfx_cycle()
 		move_and_slide()
 		return
 
@@ -55,6 +67,7 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 		move_and_slide()
 		play_idle()
+		reset_walk_sfx_cycle()
 		return
 
 	var dx: float = current_target.global_position.x - global_position.x
@@ -71,6 +84,7 @@ func _physics_process(delta: float) -> void:
 		sprite.flip_h = velocity.x < 0.0
 		move_and_slide()
 		play_walk()
+		update_walk_sfx(delta, is_on_floor() and absf(velocity.x) > 0.01)
 
 		if not attack_timer.is_stopped():
 			attack_timer.stop()
@@ -78,6 +92,7 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 		move_and_slide()
 		play_attack()
+		reset_walk_sfx_cycle()
 
 		if attack_timer.is_stopped():
 			attack_timer.start()
@@ -156,6 +171,8 @@ func _on_attack_timer_timeout() -> void:
 	if dx <= attack_range + 4.0:
 		if current_target.has_method("take_damage"):
 			current_target.take_damage(contact_damage)
+			if current_target == stand_ref:
+				play_truck_hit_sfx()
 		play_attack()
 
 func take_damage(amount: int) -> void:
@@ -173,12 +190,14 @@ func take_damage(amount: int) -> void:
 func die() -> void:
 	is_dead = true
 	velocity = Vector2.ZERO
+	reset_walk_sfx_cycle()
 	died.emit()
 	queue_free()
 
 func show_hurt() -> void:
 	is_hurt = true
 	velocity.x = 0.0
+	reset_walk_sfx_cycle()
 
 	if sprite.sprite_frames.has_animation("hurt"):
 		sprite.play("hurt")
@@ -191,6 +210,60 @@ func show_hurt() -> void:
 func _end_hurt_after_delay() -> void:
 	await get_tree().create_timer(hurt_duration).timeout
 	is_hurt = false
+
+func setup_walk_sfx() -> void:
+	walk_sfx_player = AudioStreamPlayer.new()
+	walk_sfx_player.name = "EnemyWalkSfx"
+	walk_sfx_player.stream = ENEMY_WALK_SFX
+	add_child(walk_sfx_player)
+
+func setup_truck_hit_sfx() -> void:
+	truck_hit_sfx_player = AudioStreamPlayer.new()
+	truck_hit_sfx_player.name = "TruckHitSfx"
+	truck_hit_sfx_player.stream = TRUCK_HIT_SFX
+	truck_hit_sfx_player.volume_db = TRUCK_HIT_VOLUME_DB
+	add_child(truck_hit_sfx_player)
+
+func update_walk_sfx(delta: float, is_walking: bool) -> void:
+	if not is_walking:
+		reset_walk_sfx_cycle()
+		return
+
+	if not walk_audio_active:
+		play_walk_sfx()
+		walk_step_time_left = WALK_STEP_INTERVAL
+		walk_audio_active = true
+		return
+
+	walk_step_time_left -= delta
+	if walk_step_time_left <= 0.0:
+		play_walk_sfx()
+		walk_step_time_left = WALK_STEP_INTERVAL
+
+func play_walk_sfx() -> void:
+	if walk_sfx_player == null:
+		return
+
+	if walk_sfx_player.playing:
+		walk_sfx_player.stop()
+
+	walk_sfx_player.play()
+
+func reset_walk_sfx_cycle() -> void:
+	walk_step_time_left = 0.0
+	walk_audio_active = false
+
+	if walk_sfx_player and walk_sfx_player.playing:
+		walk_sfx_player.stop()
+
+func play_truck_hit_sfx() -> void:
+	if truck_hit_sfx_player == null:
+		return
+
+	if truck_hit_sfx_player.playing:
+		truck_hit_sfx_player.stop()
+
+	truck_hit_sfx_player.play()
 
 func play_idle() -> void:
 	if is_hurt or is_dead:
