@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://cnhvt5r0rftfp"]
+
+[ext_resource type="Script" uid="uid://dbgin27lbfkvb" path="res://scripts/trash.gd" id="1_tsx7w"]
+[ext_resource type="Texture2D" uid="uid://ck8165v11mgck" path="res://assets/tileset/Decoration 32x32.png" id="2_3xsam"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0mst1"]
+size = Vector2(16, 17)
+
+[node name="Trash" type="Area2D" unique_id=1774729699]
+z_index = 1
+scale = Vector2(3, 3)
+collision_mask = 2
+script = ExtResource("1_tsx7w")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=798522604]
+texture = ExtResource("2_3xsam")
+region_enabled = true
+region_rect = Rect2(9.707956, 16.66222, 12.618853, 15.148211)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1365820698]
+shape = SubResource("RectangleShape2D_0mst1")
+
+[node name="PromptLabel" type="Label" parent="." unique_id=1150287526]
+visible = false
+offset_left = -1.0
+offset_top = -15.000002
+offset_right = 9.0
+offset_bottom = 7.999998
+scale = Vector2(0.3, 0.3)
+text = "E"
