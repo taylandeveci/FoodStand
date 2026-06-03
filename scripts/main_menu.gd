@@ -34,15 +34,17 @@ func _on_back_start_pressed() -> void:
 	show_main_menu()
 
 func _on_continue_pressed() -> void:
+	RunManager.load_meta()
 	RunManager.load_run()
 	get_tree().change_scene_to_file(DISTRICT_SELECT_SCENE_PATH)
 
 func _on_restart_pressed() -> void:
+	RunManager.load_meta()
 	RunManager.reset_run()
 	RunManager.save_run()
 	get_tree().change_scene_to_file(DISTRICT_SELECT_SCENE_PATH)
 	
 func _on_new_game_pressed() -> void:
-	RunManager.reset_run()
-	RunManager.save_run()
+	RunManager.load_meta()
+	RunManager.create_new_slot()
 	get_tree().change_scene_to_file(DISTRICT_SELECT_SCENE_PATH)

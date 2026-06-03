@@ -1,7 +1,12 @@
 extends Node
 
 const DISTRICT_COUNT: int = 5
-const DAYS_PER_DISTRICT: int = 7
+const DAYS_PER_DISTRICT: int = 1
+
+const SAVE_META_PATH := "user://save_meta.cfg"
+const MAX_SAVE_SLOTS: int = 3
+
+var active_save_slot: int = 1
 
 const DISTRICT_NAMES: Array[String] = [
 	"Mahalle 1",
@@ -553,12 +558,12 @@ func save_run() -> void:
 	config.set_value("survival", "survival_inventory", survival_inventory)
 	config.set_value("survival", "bag_upgrade_level", bag_upgrade_level)
 
-	config.save(SAVE_PATH)
+	config.save(get_save_path())
 
 
 func load_run() -> void:
 	var config := ConfigFile.new()
-	var err := config.load(SAVE_PATH)
+	var err := config.load(get_save_path())
 
 	if err != OK:
 		reset_run()
@@ -592,3 +597,46 @@ func load_run() -> void:
 
 	pending_reward_district_index = -1
 	pending_reward_options.clear()
+	
+func get_save_path(slot: int = active_save_slot) -> String:
+	return "user://run_save_slot_%d.cfg" % slot
+
+
+func save_meta() -> void:
+	var config := ConfigFile.new()
+	config.set_value("meta", "active_save_slot", active_save_slot)
+	config.save(SAVE_META_PATH)
+
+
+func load_meta() -> void:
+	var config := ConfigFile.new()
+	var err := config.load(SAVE_META_PATH)
+
+	if err != OK:
+		active_save_slot = 1
+		save_meta()
+		return
+
+	active_save_slot = int(config.get_value("meta", "active_save_slot", 1))
+
+
+func save_slot_exists(slot: int) -> bool:
+	return FileAccess.file_exists(get_save_path(slot))
+
+
+func find_empty_slot() -> int:
+	for slot in range(1, MAX_SAVE_SLOTS + 1):
+		if not save_slot_exists(slot):
+			return slot
+
+	return active_save_slot
+
+
+func create_new_slot() -> void:
+	var new_slot := find_empty_slot()
+
+	active_save_slot = new_slot
+	save_meta()
+
+	reset_run()
+	save_run()
