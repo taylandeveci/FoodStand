@@ -16,6 +16,7 @@
 [ext_resource type="PackedScene" uid="uid://np2r88sv8hqk" path="res://scenes/BossEnemy.tscn" id="7_og1vs"]
 [ext_resource type="PackedScene" uid="uid://df3d3ppeaprx4" path="res://scenes/barricade.tscn" id="8_2wyq8"]
 [ext_resource type="Script" uid="uid://dll113u7ivrrk" path="res://scripts/player.gd" id="9_5q0nq"]
+[ext_resource type="PackedScene" path="res://scenes/recipe_book.tscn" id="9_vxglm"]
 [ext_resource type="Texture2D" uid="uid://ll1ixrtns7yh" path="res://assets/tiles/tile_ground/tile_ground2.png" id="9_y6deb"]
 [ext_resource type="Texture2D" uid="uid://cdony0xwr04eh" path="res://assets/character/char_main_punch1.png" id="12_pm3ni"]
 [ext_resource type="Texture2D" uid="uid://co3iyj7jsj2o6" path="res://assets/character/char_main/char_main_hurt/char_main_hurt1.png" id="14_jscy8"]
@@ -25,7 +26,7 @@
 [ext_resource type="FontFile" uid="uid://d5vrfcakc278" path="res://Fonts/ThaleahFat.ttf" id="30_5q0nq"]
 [ext_resource type="Script" uid="uid://dfiloq4ggsxhv" path="res://scripts/hud.gd" id="30_dgi5k"]
 [ext_resource type="Texture2D" uid="uid://ck8165v11mgck" path="res://assets/tileset/Decoration 32x32.png" id="32_qkpxi"]
-[ext_resource type="Texture2D" path="res://assets/props/props_pressE/prop_pressE.png" id="33_press_e"]
+[ext_resource type="Texture2D" uid="uid://1y2awcbjfqty" path="res://assets/props/props_pressE/prop_pressE.png" id="33_press_e"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_k12tt"]
 texture = ExtResource("2_wsu2k")
@@ -1073,6 +1074,7 @@ tank_scene = ExtResource("5_dgi5k")
 thief_scene = ExtResource("6_y6deb")
 boss_scene = ExtResource("7_og1vs")
 barricade_scene = ExtResource("8_2wyq8")
+recipe_book_scene = ExtResource("9_vxglm")
 max_trash_count = 7
 
 [node name="NightBackground" type="Sprite2D" parent="." unique_id=1738108801]
@@ -1321,13 +1323,12 @@ theme_override_font_sizes/font_size = 35
 text = "Hold near the center"
 
 [node name="PressEPrompt" type="Sprite2D" parent="HUD/HUDRoot/ServicePanel" unique_id=604067398]
+visible = false
 position = Vector2(0, 42)
 scale = Vector2(4, 4)
-centered = false
 texture = ExtResource("33_press_e")
+centered = false
 hframes = 20
-frame = 0
-visible = false
 
 [node name="TimingBar" type="ProgressBar" parent="HUD/HUDRoot/ServicePanel" unique_id=608067398]
 layout_mode = 0
@@ -1356,9 +1357,9 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="PhaseAnimation" type="Sprite2D" parent="HUD/HUDRoot" unique_id=793145201]
+visible = false
 position = Vector2(576, 140)
 scale = Vector2(4, 4)
-visible = false
 
 [node name="ShopPanel" type="Panel" parent="HUD/HUDRoot" unique_id=1687302260]
 layout_mode = 0

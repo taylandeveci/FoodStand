@@ -1,0 +1,104 @@
+[gd_scene format=3 uid="uid://thgpg4vudcai"]
+
+[ext_resource type="Texture2D" uid="uid://dvdhrsnk86w2u" path="res://assets/recipebook/RADL_Book_blue.png" id="1_4iit1"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jfus2"]
+atlas = ExtResource("1_4iit1")
+region = Rect2(570, 0, 190, 160)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a646j"]
+atlas = ExtResource("1_4iit1")
+region = Rect2(380, 0, 190, 160)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_yxdbw"]
+atlas = ExtResource("1_4iit1")
+region = Rect2(190, 0, 190, 160)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_1vfb6"]
+atlas = ExtResource("1_4iit1")
+region = Rect2(0, 0, 190, 160)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bhyhu"]
+atlas = ExtResource("1_4iit1")
+region = Rect2(0, 0, 190, 160)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_vy0v6"]
+atlas = ExtResource("1_4iit1")
+region = Rect2(190, 0, 190, 160)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_as8c5"]
+atlas = ExtResource("1_4iit1")
+region = Rect2(380, 0, 190, 160)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mi8w5"]
+atlas = ExtResource("1_4iit1")
+region = Rect2(570, 0, 190, 160)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_jhn01"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_jfus2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_a646j")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_yxdbw")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_1vfb6")
+}],
+"loop": false,
+"name": &"close",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bhyhu")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_vy0v6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_as8c5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mi8w5")
+}],
+"loop": false,
+"name": &"open",
+"speed": 5.0
+}]
+
+[node name="RecipeBook" type="AnimatedSprite2D" unique_id=2142309425]
+sprite_frames = SubResource("SpriteFrames_jhn01")
+animation = &"close"
+
+[node name="YaziKatmani" type="Control" parent="." unique_id=17109487]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="LeftLabel" type="Label" parent="YaziKatmani" unique_id=100193575]
+layout_mode = 0
+offset_left = -71.0
+offset_top = -14.0
+offset_right = -7.0
+offset_bottom = 9.0
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "BURGER"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RightLabel" type="Label" parent="YaziKatmani" unique_id=1879078254]
+layout_mode = 0
+offset_left = 12.0
+offset_top = -14.0
+offset_right = 52.0
+offset_bottom = 10.0
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "J+J"
+horizontal_alignment = 1
+vertical_alignment = 1

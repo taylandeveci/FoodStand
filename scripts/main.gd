@@ -26,6 +26,9 @@ enum GameState {
 @export var boss_scene: PackedScene
 @export var barricade_scene: PackedScene
 
+# --- TARİF KİTABI SAHNESİ ---
+@export var recipe_book_scene: PackedScene
+
 @export var min_trash_count: int = 1
 @export var max_trash_count: int = 3
 @export var service_bar_speed: float = 140.0
@@ -37,19 +40,23 @@ enum GameState {
 @export var thief_spawn_chance: float = 0.20
 @export var tank_spawn_chance: float = 0.20
 @export var boss_spawn_side_left: bool = false
-
 @export var customers_per_day: int = 3
 
-# Survival item effects
+# --- Eksik olan Eşya Etki Değişkenleri Buraya Eklendi ---
 @export var medkit_heal_amount: int = 3
 @export var repair_kit_amount: int = 6
 @export var repair_use_distance: float = 110.0
 @export var barricade_place_distance: float = 120.0
 
+# --- Müşteri Akış Ayarları ---
 var customers_served_today: int = 0
 var customer_queue: Array[Node2D] = []
 var queue_spacing: float = 65.0
 var total_customers_today: int = 0
+var customer_spawn_timer: Timer
+
+# --- Kitap Referans Değişkeni ---
+var active_recipe_book: Node2D = null
 
 var money: int = 0
 var local_appeal: int = 0
@@ -179,6 +186,12 @@ var mission_panel = null
 
 func _ready() -> void:
 	randomize()
+
+	customer_spawn_timer = Timer.new()
+	customer_spawn_timer.name = "CustomerSpawnTimer"
+	customer_spawn_timer.one_shot = true
+	customer_spawn_timer.timeout.connect(_on_customer_spawn_timer_timeout)
+	add_child(customer_spawn_timer)
 
 	set_day_background()
 	local_appeal = RunManager.permanent_appeal_bonus
@@ -391,7 +404,7 @@ func get_nearest_free_barricade_point() -> Marker2D:
 	var nearest_distance: float = barricade_place_distance
 
 	for child in barricade_points.get_children():
-		if not child is Marker2D:
+		if not (child is Marker2D):
 			continue
 
 		var point: Marker2D = child
@@ -531,6 +544,9 @@ func start_morning_phase() -> void:
 	clear_enemies()
 	clear_barricades()
 
+	if customer_spawn_timer:
+		customer_spawn_timer.stop()
+
 	if hud and hud.has_method("hide_shop_panel"):
 		hud.hide_shop_panel()
 
@@ -565,8 +581,8 @@ func start_morning_phase() -> void:
 		position_phase_animation_above_food_cart()
 		hud.show_phase_morning_prep()
 
-	spawn_random_trash()
-	update_ui()
+	# GÜVENLİ ÇÖP DOĞUMU: Çağrıyı temizlik bittikten sonraya erteliyoruz
+	spawn_random_trash.call_deferred()
 
 func clear_old_trash() -> void:
 	for child in trash_container.get_children():
@@ -577,6 +593,10 @@ func clear_customer() -> void:
 		child.queue_free()
 	active_customer = null
 	customer_queue.clear()
+
+	if active_recipe_book and is_instance_valid(active_recipe_book):
+		active_recipe_book.queue_free()
+	active_recipe_book = null
 
 func clear_enemies() -> void:
 	for child in enemy_container.get_children():
@@ -668,9 +688,9 @@ func open_cart() -> void:
 	complete_mission(MISSION_GO_FOOD_CART)
 	set_status("Stand opened. Customers are coming!")
 	set_result("Stand opened!")
-	spawn_customer_queue()
+	setup_customer_day_parameters()
 
-func spawn_customer_queue() -> void:
+func setup_customer_day_parameters() -> void:
 	if customer_scene == null:
 		push_error("customer_scene atanmamis.")
 		return
@@ -678,34 +698,66 @@ func spawn_customer_queue() -> void:
 	clear_customer()
 	customers_served_today = 0
 
+	var district_profile: Dictionary = RunManager.get_current_district_profile()
+	total_customers_today = customers_per_day + int(district_profile.get("customer_count_bonus", 0))
+	total_customers_today = max(total_customers_today, 1)
+
+	if recipe_book_scene:
+		active_recipe_book = recipe_book_scene.instantiate()
+		add_child(active_recipe_book)
+		if food_cart:
+			active_recipe_book.global_position = food_cart.global_position + Vector2(40, -250)
+		active_recipe_book.visible = false
+
+		var yazi_katmani = active_recipe_book.get_node_or_null("YaziKatmani") as Control
+		if yazi_katmani:
+			yazi_katmani.visible = false
+
+		var left_lbl = active_recipe_book.get_node_or_null("YaziKatmani/LeftLabel") as Label
+		var right_lbl = active_recipe_book.get_node_or_null("YaziKatmani/RightLabel") as Label
+		if left_lbl:
+			left_lbl.text = ""
+		if right_lbl:
+			right_lbl.text = ""
+
+	if customer_spawn_timer:
+		customer_spawn_timer.start(randf_range(1.0, 2.5))
+
+func spawn_single_customer() -> void:
+	if customer_scene == null:
+		return
+
+	var district_profile: Dictionary = RunManager.get_current_district_profile()
+	var customer = customer_scene.instantiate()
+	customer_container.add_child(customer)
+
 	var dir = sign(customer_spawn_point.global_position.x - customer_stop_point.global_position.x)
 	if dir == 0:
 		dir = 1
 
-	var district_profile: Dictionary = RunManager.get_current_district_profile()
-	var total_customers: int = customers_per_day + int(district_profile.get("customer_count_bonus", 0))
-	total_customers = max(total_customers, 1)
-	total_customers_today = total_customers
+	var queue_index = customer_queue.size()
+	customer.global_position = customer_spawn_point.global_position + Vector2(queue_index * queue_spacing * dir, 0)
 
-	for i in range(total_customers):
-		var customer = customer_scene.instantiate()
-		customer_container.add_child(customer)
-		customer.global_position = customer_spawn_point.global_position + Vector2(i * queue_spacing * dir, 0)
+	customer.max_patience += RunManager.day_patience_bonus
+	customer.max_patience += float(district_profile.get("patience_bonus", 0.0))
+	customer.max_patience = max(customer.max_patience, 20.0)
 
-		customer.max_patience += RunManager.day_patience_bonus
-		customer.max_patience += float(district_profile.get("patience_bonus", 0.0))
-		customer.max_patience = max(customer.max_patience, 20.0)
+	if customer.has_signal("arrived"):
+		customer.arrived.connect(_on_customer_arrived.bind(customer))
+	if customer.has_signal("exited"):
+		customer.exited.connect(_on_customer_exited.bind(customer))
+	if customer.has_signal("patience_ran_out"):
+		customer.patience_ran_out.connect(_on_customer_patience_ran_out.bind(customer))
 
-		if customer.has_signal("arrived"):
-			customer.arrived.connect(_on_customer_arrived.bind(customer))
-		if customer.has_signal("exited"):
-			customer.exited.connect(_on_customer_exited.bind(customer))
-		if customer.has_signal("patience_ran_out"):
-			customer.patience_ran_out.connect(_on_customer_patience_ran_out.bind(customer))
-
-		customer_queue.append(customer)
-
+	customer_queue.append(customer)
 	update_queue_positions()
+
+func _on_customer_spawn_timer_timeout() -> void:
+	var spawned_so_far = customers_served_today + customer_queue.size()
+	if spawned_so_far < total_customers_today:
+		spawn_single_customer()
+		var next_spawn_delay = randf_range(4.0, 9.0)
+		customer_spawn_timer.start(next_spawn_delay)
 
 func update_queue_positions() -> void:
 	var dir = sign(customer_spawn_point.global_position.x - customer_stop_point.global_position.x)
@@ -714,6 +766,11 @@ func update_queue_positions() -> void:
 
 	for i in range(customer_queue.size()):
 		var customer = customer_queue[i]
+		if customer == null or not is_instance_valid(customer):
+			continue
+		if customer == active_customer:
+			continue
+
 		var target_pos = customer_stop_point.global_position
 		target_pos.x += i * queue_spacing * dir
 
@@ -738,12 +795,36 @@ func activate_front_customer(customer: Node2D) -> void:
 	if customer.has_method("show_order"):
 		customer.call("show_order")
 
+	if active_recipe_book and is_instance_valid(active_recipe_book):
+		# Kitap daha önce açılmadıysa (görünmezse) tam müşteri geldiği an açma animasyonunu oynatıyoruz
+		if not active_recipe_book.visible:
+			active_recipe_book.visible = true
+			if active_recipe_book.has_method("play"):
+				active_recipe_book.call("play", "open")
+
+		var left_lbl = active_recipe_book.get_node_or_null("YaziKatmani/LeftLabel") as Label
+		var right_lbl = active_recipe_book.get_node_or_null("YaziKatmani/RightLabel") as Label
+		var yazi_katmani = active_recipe_book.get_node_or_null("YaziKatmani") as Control
+
+		if left_lbl:
+			left_lbl.text = get_recipe_display_name(current_order)
+
+		if right_lbl:
+			var combo_parts: Array = []
+			for key in current_recipe_sequence:
+				combo_parts.append(recipe_display_map.get(key, str(key)))
+			right_lbl.text = " + ".join(combo_parts)
+
+		if yazi_katmani:
+			yazi_katmani.visible = true
+
+	update_ui()
+
 	if service_session_started:
 		start_recipe_input_phase()
 	else:
 		set_status("Customer ready. Hold to start cooking.")
 		set_result("Order: %s" % get_recipe_display_name(current_order))
-
 
 func try_activate_front_customer() -> void:
 	if active_customer != null:
@@ -760,6 +841,14 @@ func try_activate_front_customer() -> void:
 		activate_front_customer(front_customer)
 
 func _on_customer_arrived(customer: Node2D) -> void:
+	if active_customer != null:
+		if customer != active_customer:
+			if customer.has_method("stop_patience"):
+				customer.call_deferred("stop_patience")
+			if customer.has_method("hide_order"):
+				customer.call_deferred("hide_order")
+		return
+
 	if customer_queue.size() > 0 and customer_queue[0] == customer:
 		activate_front_customer(customer)
 	else:
@@ -774,9 +863,33 @@ func advance_queue() -> void:
 
 	customers_served_today += 1
 	active_customer = null
+	service_session_started = false
 
-	if customers_served_today >= total_customers_today:
+	if active_recipe_book and is_instance_valid(active_recipe_book):
+		var left_lbl = active_recipe_book.get_node_or_null("YaziKatmani/LeftLabel") as Label
+		var right_lbl = active_recipe_book.get_node_or_null("YaziKatmani/RightLabel") as Label
+		var yazi_katmani = active_recipe_book.get_node_or_null("YaziKatmani") as Control
+
+		if left_lbl: left_lbl.text = ""
+		if right_lbl: right_lbl.text = ""
+		if yazi_katmani: yazi_katmani.visible = false
+
+	if customers_served_today >= total_customers_today and customer_queue.is_empty():
 		set_status("Day over. Waiting for customers to leave...")
+		if active_recipe_book and is_instance_valid(active_recipe_book):
+			var left_lbl = active_recipe_book.get_node_or_null("YaziKatmani/LeftLabel") as Label
+			var right_lbl = active_recipe_book.get_node_or_null("YaziKatmani/RightLabel") as Label
+			if left_lbl: left_lbl.text = ""
+			if right_lbl: right_lbl.text = ""
+
+			if active_recipe_book.has_method("play"):
+				active_recipe_book.call("play", "close")
+				if active_recipe_book.has_signal("animation_finished"):
+					active_recipe_book.animation_finished.connect(func():
+						if active_recipe_book and is_instance_valid(active_recipe_book):
+							active_recipe_book.queue_free()
+							active_recipe_book = null
+					)
 	else:
 		game_state = GameState.CUSTOMER_WALKING
 		update_queue_positions()
@@ -820,8 +933,7 @@ func start_recipe_input_phase() -> void:
 
 	var combo_text = " + ".join(combo_parts)
 
-	if food_cart and food_cart.has_method("set_recipe_hint"):
-		food_cart.call("set_recipe_hint", "Recipe: " + combo_text)
+
 
 	set_status("Enter recipe for %s" % get_recipe_display_name(current_order))
 	set_result("Use recipe keys.")
@@ -838,7 +950,6 @@ func register_recipe_input(value: String) -> void:
 		return
 
 	player_recipe_input.append(value)
-
 	var current_index: int = player_recipe_input.size() - 1
 
 	if current_index >= current_recipe_sequence.size():
@@ -1147,71 +1258,49 @@ func get_shop_item_texts(mode: String, section: String) -> Array:
 func get_shop_item_cost(mode: String, section: String, index: int) -> int:
 	if mode == "day":
 		match index:
-			0:
-				return 6
-			1:
-				return 7
-			2:
-				return 7
-			_:
-				return 999
+			0: return 6
+			1: return 7
+			2: return 7
+			_: return 999
 
 	if mode == "night" and section == "upgrade":
 		match index:
-			0:
-				return 7
-			1:
-				return 8
-			2:
-				return 6
-			3:
-				return RunManager.get_bag_upgrade_cost()
-			_:
-				return 999
+			0: return 7
+			1: return 8
+			2: return 6
+			3: return RunManager.get_bag_upgrade_cost()
+			_: return 999
 
 	if mode == "night" and section == "survival":
 		match index:
-			0:
-				return 5
-			1:
-				return 6
-			2:
-				return 8
-			_:
-				return 999
+			0: return 5
+			1: return 6
+			2: return 8
+			_: return 999
 
 	return 999
 
 func can_buy_shop_item(mode: String, section: String, index: int) -> bool:
 	if mode == "night" and section == "upgrade":
 		match index:
-			3:
-				return RunManager.can_upgrade_bag()
-			_:
-				return true
+			3: return RunManager.can_upgrade_bag()
+			_: return true
 
 	if mode == "night" and section == "survival":
 		match index:
-			0:
-				return not RunManager.is_survival_item_full("medkit")
-			1:
-				return not RunManager.is_survival_item_full("repair_kit")
-			2:
-				return not RunManager.is_survival_item_full("barricade")
-			_:
-				return false
+			0: return not RunManager.is_survival_item_full("medkit")
+			1: return not RunManager.is_survival_item_full("repair_kit")
+			2: return not RunManager.is_survival_item_full("barricade")
+			_: return false
 
 	return true
 
 func apply_shop_item(mode: String, section: String, index: int) -> void:
 	if mode == "day":
 		match index:
-			0:
-				RunManager.day_coin_bonus += 1
-			1:
-				RunManager.day_patience_bonus += 20.0
-			2:
-				RunManager.day_timing_bonus += 5.0
+			0: RunManager.day_coin_bonus += 1
+			1: RunManager.day_patience_bonus += 20.0
+			2: RunManager.day_timing_bonus += 5.0
 		return
 
 	if mode == "night" and section == "upgrade":
@@ -1229,48 +1318,32 @@ func apply_shop_item(mode: String, section: String, index: int) -> void:
 
 	if mode == "night" and section == "survival":
 		match index:
-			0:
-				RunManager.add_survival_item("medkit", 1)
-			1:
-				RunManager.add_survival_item("repair_kit", 1)
-			2:
-				RunManager.add_survival_item("barricade", 1)
+			0: RunManager.add_survival_item("medkit", 1)
+			1: RunManager.add_survival_item("repair_kit", 1)
+			2: RunManager.add_survival_item("barricade", 1)
 
 func get_shop_item_name(mode: String, section: String, index: int) -> String:
 	if mode == "day":
 		match index:
-			0:
-				return "Better Ingredients"
-			1:
-				return "Customer Charm"
-			2:
-				return "Steady Hands"
-			_:
-				return "Unknown"
+			0: return "Better Ingredients"
+			1: return "Customer Charm"
+			2: return "Steady Hands"
+			_: return "Unknown"
 
 	if mode == "night" and section == "upgrade":
 		match index:
-			0:
-				return "Reinforced Cart"
-			1:
-				return "Sharper Knife"
-			2:
-				return "Emergency Training"
-			3:
-				return "Bag Upgrade"
-			_:
-				return "Unknown"
+			0: return "Reinforced Cart"
+			1: return "Sharper Knife"
+			2: return "Emergency Training"
+			3: return "Bag Upgrade"
+			_: return "Unknown"
 
 	if mode == "night" and section == "survival":
 		match index:
-			0:
-				return "Medkit"
-			1:
-				return "Repair Kit"
-			2:
-				return "Barricade"
-			_:
-				return "Unknown"
+			0: return "Medkit"
+			1: return "Repair Kit"
+			2: return "Barricade"
+			_: return "Unknown"
 
 	return "Unknown"
 
@@ -1284,14 +1357,10 @@ func update_shop_buttons() -> void:
 	for i in range(4):
 		var button: Button = null
 		match i:
-			0:
-				button = shop_button_1
-			1:
-				button = shop_button_2
-			2:
-				button = shop_button_3
-			3:
-				button = shop_button_4
+			0: button = shop_button_1
+			1: button = shop_button_2
+			2: button = shop_button_3
+			3: button = shop_button_4
 
 		if button == null or not button.visible:
 			continue
@@ -1386,6 +1455,7 @@ func start_night_phase() -> void:
 	enemy_spawn_timer.stop()
 
 	night_timer.wait_time = night_duration
+	enemy_spawn_interval = 4.0
 	enemy_spawn_timer.wait_time = enemy_spawn_interval
 
 	night_timer.start()
@@ -1446,12 +1516,10 @@ func _on_enemy_spawn_timer_timeout() -> void:
 		enemy_instance = tank_scene.instantiate()
 	else:
 		if enemy_scene == null:
-			push_error("enemy_scene atanmamis.")
 			return
 		enemy_instance = enemy_scene.instantiate()
 
 	enemy_container.add_child(enemy_instance)
-
 	var spawned_left: bool = randi() % 2 == 0
 
 	if spawned_left:
@@ -1470,7 +1538,6 @@ func _on_enemy_spawn_timer_timeout() -> void:
 
 func spawn_boss_enemy() -> void:
 	if boss_scene == null:
-		push_error("boss_scene atanmamis.")
 		return
 
 	if boss_alive:
@@ -1532,8 +1599,7 @@ func _on_night_timer_timeout() -> void:
 	if hud and hud.has_method("show_phase_night_survived"):
 		hud.show_phase_night_survived()
 
-	var run_result := RunManager.register_night_won()
-	RunManager.save_run()
+	var run_result: String = str(RunManager.register_night_won())
 
 	match run_result:
 		"next_day":
@@ -1570,8 +1636,7 @@ func _on_boss_died() -> void:
 	if hud and hud.has_method("show_phase_night_survived"):
 		hud.show_phase_night_survived()
 
-	var run_result := RunManager.register_night_won()
-	RunManager.save_run()
+	var run_result: String = str(RunManager.register_night_won())
 
 	match run_result:
 		"next_day":
