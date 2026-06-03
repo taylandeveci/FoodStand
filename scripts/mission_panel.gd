@@ -1,9 +1,8 @@
 extends Control
 
-const UI_SCALE := 3.0
-const PANEL_MARGIN := 24.0
-const PANEL_HEIGHT := 220.0
-const ENTRY_SEPARATION := 6
+const UI_SCALE := 2.5
+const PANEL_MARGIN := 0.0
+const ENTRY_SEPARATION := 0
 
 const HEADER_TEXTURE := preload("res://assets/props/props_missions/missions.png")
 const MISSION_TEXTURES := {
@@ -68,6 +67,7 @@ func _ensure_ui() -> void:
 	z_index = 50
 
 	var header_size: Vector2 = HEADER_TEXTURE.get_size() * UI_SCALE
+	var panel_height: float = header_size.y * float(MISSION_TEXTURES.size() + 1)
 	anchor_left = 1.0
 	anchor_right = 1.0
 	anchor_top = 0.0
@@ -75,7 +75,7 @@ func _ensure_ui() -> void:
 	offset_left = -header_size.x - PANEL_MARGIN
 	offset_top = PANEL_MARGIN
 	offset_right = -PANEL_MARGIN
-	offset_bottom = PANEL_MARGIN + PANEL_HEIGHT
+	offset_bottom = PANEL_MARGIN + panel_height
 
 	var root_box := VBoxContainer.new()
 	root_box.name = "Root"
