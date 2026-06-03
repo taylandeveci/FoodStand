@@ -317,7 +317,7 @@ func apply_hot_water_splash() -> void:
 		if not enemy.has_method("take_damage"):
 			continue
 
-		if not enemy is Node2D:
+		if not (enemy is Node2D):
 			continue
 
 		var enemy_node: Node2D = enemy
