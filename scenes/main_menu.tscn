@@ -556,9 +556,17 @@ region = Rect2(63.89722, 32.354736, 15.934124, 15.026779)
 atlas = ExtResource("5_rtw2f")
 region = Rect2(112.42647, 33.308846, 14.500214, 13.567665)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_7b55j"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(16.057796, 33.29063, 15.056496, 14.198719)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5pajh"]
+atlas = ExtResource("5_rtw2f")
+region = Rect2(16.114967, 65.2191, 15.056252, 13.856186)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_rcqid"]
 atlas = ExtResource("5_rtw2f")
-region = Rect2(16.767956, 33.430367, 14.246628, 13.567665)
+region = Rect2(0.2495575, 66.01048, 14.514248, 13.252136)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_1ajci"]
 atlas = ExtResource("6_rtw2f")
@@ -1025,27 +1033,39 @@ layout_mode = 2
 texture = SubResource("AtlasTexture_flqon")
 expand_mode = 3
 
+[node name="BKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/MedkitRow" unique_id=257487455]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_7b55j")
+expand_mode = 3
+
+[node name="RKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/MedkitRow" unique_id=2137870271]
+custom_minimum_size = Vector2(35, 35)
+layout_mode = 2
+texture = SubResource("AtlasTexture_5pajh")
+expand_mode = 3
+
 [node name="MedkitLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/MedkitRow" unique_id=1499377371]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_wu84c")
 theme_override_font_sizes/font_size = 20
-text = "use medkit"
+text = "medkit/barricade/repairkit"
 
-[node name="BarricadeRow" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=1386293279]
+[node name="Skill" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=1386293279]
 layout_mode = 2
 alignment = 1
 
-[node name="BKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/BarricadeRow" unique_id=120737035]
+[node name="QKey" type="TextureRect" parent="HowToPlayPanel/Page2/ControlsContainer/Skill" unique_id=120737035]
 custom_minimum_size = Vector2(35, 35)
 layout_mode = 2
 texture = SubResource("AtlasTexture_rcqid")
 expand_mode = 3
 
-[node name="BarricadeLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/BarricadeRow" unique_id=1751733842]
+[node name="QLabel" type="Label" parent="HowToPlayPanel/Page2/ControlsContainer/Skill" unique_id=1751733842]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_wu84c")
 theme_override_font_sizes/font_size = 20
-text = "place barricade"
+text = "use skill"
 
 [node name="PauseRow" type="HBoxContainer" parent="HowToPlayPanel/Page2/ControlsContainer" unique_id=477792812]
 layout_mode = 2
