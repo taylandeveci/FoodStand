@@ -28,7 +28,7 @@ enum GameState {
 
 @export var min_trash_count: int = 1
 @export var max_trash_count: int = 3
-@export var service_bar_speed: float = 140.0
+@export var service_bar_speed: float = 100
 @export var interact_hold_duration: float = 1.0
 
 @export var night_duration: float = 60.0
@@ -165,6 +165,7 @@ const REWARD_SELECT_SCENE_PATH := "res://scenes/reward_select.tscn"
 @onready var order_label: Label = get_node_or_null("HUD/HUDRoot/ServicePanel/OrderLabel") as Label
 @onready var hint_label: Label = get_node_or_null("HUD/HUDRoot/ServicePanel/HintLabel") as Label
 @onready var timing_bar: ProgressBar = get_node_or_null("HUD/HUDRoot/ServicePanel/TimingBar") as ProgressBar
+@onready var cursor_line: ColorRect = get_node_or_null("HUD/HUDRoot/ServicePanel/TimingBar/CursorLine") as ColorRect
 @onready var service_prompt: Sprite2D = get_node_or_null("HUD/HUDRoot/ServicePanel/PressEPrompt") as Sprite2D
 
 # Shop button refs
@@ -249,9 +250,10 @@ func _process(delta: float) -> void:
 	update_phase_animation_anchor()
 
 	if game_state == GameState.SERVING:
-		update_service_hold(delta)
-		if game_state == GameState.SERVING and not service_hold_active:
-			update_service_bar(delta)
+		# SADECE BU KISMI DEĞİŞTİRİYORUZ
+		update_service_bar(delta)
+		if Input.is_action_just_pressed("interact"):
+			finish_service_phase(timing_value)
 	else:
 		reset_service_hold()
 		hide_service_prompt()
@@ -861,7 +863,8 @@ func register_recipe_input(value: String) -> void:
 		if food_cart and food_cart.has_method("set_recipe_hint"):
 			food_cart.call("set_recipe_hint", "")
 
-		complete_customer_service_from_recipe()
+		# BURAYI DEĞİŞTİRDİK: Direkt müşteriyi göndermek yerine Servis Aşamasını (Timing Bar) başlatıyoruz
+		start_service_phase()
 
 func fail_recipe_input() -> void:
 	recipe_input_active = false
@@ -928,7 +931,7 @@ func start_service_phase() -> void:
 		order_label.text = "Order: %s" % get_recipe_display_name(current_order)
 
 	if hint_label:
-		hint_label.text = "Hold near the center."
+		hint_label.text = "Press E in the GREEN ZONE!"
 
 	show_service_prompt_idle()
 
@@ -951,7 +954,11 @@ func update_service_bar(delta: float) -> void:
 		timing_direction = 1.0
 
 	if timing_bar:
-		timing_bar.value = timing_value
+		timing_bar.value = 0.0
+
+	if cursor_line and timing_bar:
+		var percent: float = timing_value / 100.0
+		cursor_line.position.x = (percent * timing_bar.size.x) - (cursor_line.size.x / 2.0)
 
 func finish_service_phase(timing_snapshot: float = -1.0) -> void:
 	if service_panel:
